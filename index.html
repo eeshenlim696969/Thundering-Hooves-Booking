@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+    <title>Thundering Hooves | Music & Performing Arts Club</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700;900&family=Inter:wght@400;500;600;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --app-height: 100%;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: #0a0101;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overscroll-behavior: none;
+      }
+      #root {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      h1, h2, h3, .serif {
+        font-family: 'Noto Serif SC', serif;
+      }
+      .brush-font {
+        font-family: 'Ma Shan Zheng', cursive;
+      }
+      
+      .cny-pattern {
+        background-image: url("https://www.transparenttextures.com/patterns/p6.png");
+        background-attachment: fixed;
+        background-color: #1a0202;
+        min-height: 100vh;
+        width: 100%;
+        position: relative;
+        z-index: 0;
+      }
+
+      .cny-pattern::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: 
+          radial-gradient(circle at 50% 0%, rgba(185, 28, 28, 0.3) 0%, transparent 70%),
+          radial-gradient(circle at 50% 100%, rgba(139, 0, 0, 0.2) 0%, transparent 60%),
+          linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.8) 100%);
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      @keyframes scroll-unroll {
+        0% { max-height: 0; opacity: 0; }
+        10% { opacity: 1; }
+        100% { max-height: 85vh; opacity: 1; }
+      }
+      .scroll-unroll-active {
+        animation: scroll-unroll 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      @keyframes scroll-roll-up {
+        from { max-height: 85vh; opacity: 1; }
+        to { max-height: 0; opacity: 0; }
+      }
+      .scroll-roll-up-active {
+        animation: scroll-roll-up 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      @keyframes firework-burst {
+        0% { transform: scale(0); opacity: 1; }
+        50% { opacity: 1; }
+        100% { transform: scale(4); opacity: 0; }
+      }
+      .firework-burst {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        box-shadow: 
+          0 0 20px var(--fw-color),
+          -40px -40px 0 var(--fw-color),
+          40px -40px 0 var(--fw-color),
+          -40px 40px 0 var(--fw-color),
+          40px 40px 0 var(--fw-color),
+          0 -60px 0 var(--fw-color),
+          0 60px 0 var(--fw-color),
+          -60px 0 0 var(--fw-color),
+          60px 0 0 var(--fw-color);
+        animation: firework-burst 1.2s ease-out forwards;
+      }
+
+      .thundering-rumble {
+        animation: rumble 0.1s linear infinite;
+      }
+      @keyframes rumble {
+        0% { transform: translate(1px, 1px) rotate(0deg); }
+        25% { transform: translate(-1px, -2px) rotate(-1deg); }
+        50% { transform: translate(-3px, 0px) rotate(1deg); }
+        75% { transform: translate(3px, 2px) rotate(0deg); }
+        100% { transform: translate(1px, -1px) rotate(1deg); }
+      }
+
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.2);
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #d4af37;
+        border-radius: 10px;
+      }
+      
+      button, a {
+        touch-action: manipulation;
+      }
+
+      .view-transition {
+        animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes slideUpFade {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @keyframes slide-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-slide-up {
+        animation: slide-up 0.5s ease-out forwards;
+      }
+
+      @keyframes luck-shake {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(15deg); }
+        50% { transform: rotate(-15deg); }
+        75% { transform: rotate(15deg); }
+        100% { transform: rotate(0deg); }
+      }
+      .animate-luck-shake {
+        animation: luck-shake 0.4s ease-in-out infinite;
+      }
+
+      @keyframes parchment-reveal {
+        from { opacity: 0; transform: scale(0.8) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      .animate-parchment-reveal {
+        animation: parchment-reveal 0.6s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
+      }
+
+      .text-gold-glow {
+        text-shadow: 0 0 10px rgba(212, 175, 55, 0.5), 0 0 20px rgba(212, 175, 55, 0.2);
+      }
+
+      /* Gacha Specific Animations */
+      @keyframes holographic-shimmer {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .holographic-bg {
+        background: linear-gradient(135deg, #a5f3fc, #ffffff, #93c5fd, #ffffff, #a5f3fc);
+        background-size: 400% 400%;
+        animation: holographic-shimmer 4s ease infinite;
+      }
+
+      @keyframes rapid-cycle {
+        0%, 33% { transform: scale(1); filter: blur(0); }
+        50% { transform: scale(1.1); filter: blur(2px); }
+        66%, 100% { transform: scale(1); filter: blur(0); }
+      }
+      .animate-rapid-cycle {
+        animation: rapid-cycle 0.15s linear infinite;
+      }
+
+      @keyframes coin-fall {
+        0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+      }
+      .coin-particle {
+        position: fixed;
+        width: 24px;
+        height: 24px;
+        background: radial-gradient(circle, #fbbf24, #d97706);
+        border: 2px solid #b45309;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 100000;
+        animation: coin-fall 2.5s linear forwards;
+      }
+
+      /* Parallax / Drifting Clouds */
+      @keyframes drifting-clouds {
+        from { transform: translateX(-10%); }
+        to { transform: translateX(10%); }
+      }
+      .drifting-clouds {
+        animation: drifting-clouds 30s linear infinite alternate;
+      }
+
+      @keyframes glow-pulse {
+        0% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+        50% { box-shadow: 0 0 50px rgba(212, 175, 55, 0.8); }
+        100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+      }
+      .animate-glow-pulse {
+        animation: glow-pulse 2s infinite ease-in-out;
+      }
+
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in-up {
+        animation: fade-in-up 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "firebase/": "https://esm.sh/firebase@^12.8.0/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@firebase/storage": "https://esm.sh/@firebase/storage@^0.14.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+  </body>
+</html>
