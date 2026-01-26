@@ -303,15 +303,73 @@ export const App: React.FC = () => {
     return () => unsubscribe(); 
   }, [config]);
 
+  // --- CRITICAL FIX 1: SESSION RECOVERY (ZOMBIE LOCK FIX) ---
+  // If user refreshes page, find seats they locked and restore them to selection
+  useEffect(() => {
+    if (seats.length > 0 && currentUserId) {
+       const recoveredIds = seats
+         .filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId)
+         .map(s => s.id);
+       
+       if (recoveredIds.length > 0) {
+         setMySelectedIds(prev => {
+            // Only add if not already selected (prevents loops)
+            const unique = new Set([...prev, ...recoveredIds]);
+            return Array.from(unique);
+         });
+         // If we found lost seats, ensure we go to cart/hall to show them
+         if (view === 'home') {
+            // Optional: could force view change, but user might want to see intro
+            // setView('hall'); 
+         }
+       }
+    }
+  }, [seats, currentUserId, view]);
+  // -----------------------------------------------------------
+
+  // --- CRITICAL FIX 2: TIMER AUTO-RELEASE ---
+  const handleCheckoutCleanup = useCallback(async () => {
+    setIsTimerActive(false);
+    try {
+      const idsToReset = [...mySelectedIds];
+      if (idsToReset.length > 0) {
+        const bookings = idsToReset.map(id => ({
+          seatId: id,
+          data: {
+            status: SeatStatus.AVAILABLE,
+            lockedAt: null,
+            lockedBy: null,
+            paymentInfo: null
+          }
+        }));
+        await submitBatchBookingRequest(bookings);
+      }
+    } catch (e) {
+      console.error("Cleanup failed:", e);
+    } finally {
+      setMySelectedIds([]);
+      setConfirmOpen(false);
+      setPaymentOpen(false);
+    }
+  }, [mySelectedIds]);
+
   useEffect(() => {
     let timerId: number;
     if (isTimerActive && timeLeft > 0) {
       timerId = window.setInterval(() => {
-        setTimeLeft(prev => prev > 1 ? prev - 1 : 0);
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            // Timer Hit 0: Auto-cleanup database
+            handleCheckoutCleanup(); 
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
     }
     return () => clearInterval(timerId);
-  }, [isTimerActive, timeLeft]);
+  }, [isTimerActive, timeLeft, handleCheckoutCleanup]);
+  // ------------------------------------------
 
   useEffect(() => { seatsRef.current = seats; }, [seats]);
 
@@ -392,31 +450,6 @@ export const App: React.FC = () => {
         }, 1000);
       }
     }, intervalTime);
-  };
-
-  const handleCheckoutCleanup = async () => {
-    setIsTimerActive(false);
-    try {
-      const idsToReset = [...mySelectedIds];
-      if (idsToReset.length > 0) {
-        const bookings = idsToReset.map(id => ({
-          seatId: id,
-          data: {
-            status: SeatStatus.AVAILABLE,
-            lockedAt: null,
-            lockedBy: null,
-            paymentInfo: null
-          }
-        }));
-        await submitBatchBookingRequest(bookings);
-      }
-    } catch (e) {
-      console.error("Cleanup failed:", e);
-    } finally {
-      setMySelectedIds([]);
-      setConfirmOpen(false);
-      setPaymentOpen(false);
-    }
   };
 
   const removeSeatFromCheckout = (id: string) => {
