@@ -18,8 +18,8 @@ const CLICK_SOUND_URL = 'https://www.soundjay.com/misc/sounds/bubble-pop-1.mp3';
 export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, isLockedByOther, style, className, isAdmin }) => {
   const { status, tableId, seatNumber, tier, paymentInfo } = data;
   
-  // --- MANDATORY FIX: Force Table 4 to display as 3A ---
-  const displayTableId = tableId === '4' ? '3A' : tableId;
+  // FORCE TABLE 4 TO 3A FIX
+  const displayTableId = tableId === '4' || tableId === 4 ? '3A' : tableId;
 
   const [waves, setWaves] = useState<{ id: number; color: string }[]>([]);
   const [isPopping, setIsPopping] = useState(false);
@@ -36,15 +36,10 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
       }
-
       setIsPopping(true);
       setTimeout(() => setIsPopping(false), 300);
-
       const id = Date.now();
-      const waveColor = tier === SeatTier.PLATINUM ? '#ff0000' : 
-                        tier === SeatTier.GOLD ? '#ffd700' : 
-                        '#ffffff';
-                        
+      const waveColor = tier === SeatTier.PLATINUM ? '#ff0000' : tier === SeatTier.GOLD ? '#ffd700' : '#ffffff';
       setWaves(prev => [...prev, { id, color: waveColor }]);
       setTimeout(() => setWaves(prev => prev.filter(w => w.id !== id)), 600);
       onClick(data.id);
@@ -59,7 +54,6 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
         <div className="flex justify-between items-center mb-3">
           <div className="flex flex-col">
             <span className="text-white/40 text-[9px] uppercase font-black tracking-widest">Position</span>
-            {/* FIXED: Using displayTableId here */}
             <span className="text-sm font-black text-white uppercase tracking-tight">Table {displayTableId} • Seat {seatNumber}</span>
           </div>
           <div className="text-right">
@@ -67,7 +61,6 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
              <p className="font-black text-[#d4af37] font-mono text-base leading-none">RM{data.price.toFixed(2)}</p>
           </div>
         </div>
-
         {isAdmin && paymentInfo && (
           <div className="mb-3 p-3 bg-white/5 rounded-xl border border-white/5">
              <p className="text-[10px] font-black text-[#d4af37] uppercase tracking-wider truncate mb-1">{paymentInfo.studentName}</p>
@@ -77,70 +70,23 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
              </div>
           </div>
         )}
-
         <div className="h-[1px] w-full bg-white/10 mb-3" />
-        
         <div className="flex items-center gap-2.5">
-            <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor] ${
-                status === SeatStatus.AVAILABLE ? 'bg-green-500 text-green-500' :
-                (status === SeatStatus.CHECKOUT || status === SeatStatus.SELECTED || status === SeatStatus.PENDING) ? 'bg-yellow-400 text-yellow-400' : 
-                'bg-red-500 text-red-500'
-            }`} />
-            <span className="text-[10px] uppercase font-black text-white/80 tracking-widest">
-              {isAdmin ? 'Imperial Master Control' : (status === SeatStatus.CHECKOUT ? 'Review Stage' : (isLockedByOther ? 'Pending Pos' : 'Available Pos'))}
-            </span>
+            <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor] ${status === SeatStatus.AVAILABLE ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-[10px] uppercase font-black text-white/80 tracking-widest">Status Verified</span>
         </div>
       </div>
       <div className="w-3 h-3 bg-[#111] rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1.5 border-r border-b border-white/10"></div>
     </div>
   );
 
-  const cursorClass = isAdmin || status === SeatStatus.AVAILABLE || isSelected ? 'cursor-pointer' : 'cursor-not-allowed';
-
-  if (status === SeatStatus.SOLD) {
-    return (
-      <div id={`seat-${data.id}`} onClick={isAdmin ? handleSeatClick : undefined} className={`${baseClasses} ${className || ''} ${cursorClass} bg-red-600/20 border-red-600/40 text-red-600 ${isPopping ? 'animate-seat-pop' : ''}`}>
-        <Tooltip />
-        <Lock className="w-4 h-4" />
-      </div>
-    );
-  }
-
-  if (status === SeatStatus.CHECKOUT) {
-    return (
-      <div id={`seat-${data.id}`} onClick={isAdmin ? handleSeatClick : undefined} className={`${baseClasses} ${className || ''} ${cursorClass} bg-yellow-400/20 border-yellow-400/40 text-yellow-400 ${isPopping ? 'animate-seat-pop' : ''}`}>
-        <Tooltip />
-        <Loader2 className="w-4 h-4 animate-spin" />
-      </div>
-    );
-  }
-
-  if (status === SeatStatus.PENDING || (isLockedByOther && !isSelected)) {
-    return (
-      <div id={`seat-${data.id}`} onClick={isAdmin ? handleSeatClick : undefined} className={`${baseClasses} ${className || ''} ${cursorClass} bg-yellow-400/20 border-yellow-400/40 text-yellow-400 ${isPopping ? 'animate-seat-pop' : ''}`}>
-        <Tooltip />
-        <Clock className="w-4 h-4 animate-pulse" />
-      </div>
-    );
-  }
-
-  const activeStyle = isSelected 
-    ? "bg-[#5c1a1a] text-[#fef9c3] shadow-[0_0_30px_rgba(92,26,26,0.6)] border-[#d4af37] ring-[8px] ring-red-100/10" 
-    : "bg-white text-stone-700 hover:brightness-95";
-
   return (
     <button
-      id={`seat-${data.id}`}
       onClick={handleSeatClick}
       style={{ ...style, borderColor: isSelected ? undefined : color }}
-      className={`${baseClasses} ${activeStyle} ${className || ''} ${cursorClass} ${isPopping ? 'animate-seat-pop' : ''}`}
+      className={`${baseClasses} ${isSelected ? "bg-[#5c1a1a] text-[#fef9c3]" : "bg-white text-stone-700"} ${isPopping ? 'animate-seat-pop' : ''}`}
     >
         <Tooltip />
-        {waves.map(w => (
-          <React.Fragment key={w.id}>
-             <div className="energetic-burst" style={{ '--wave-color': w.color, borderColor: w.color } as React.CSSProperties} />
-          </React.Fragment>
-        ))}
         {isSelected ? <User className="w-5 h-5 animate-pulse" /> : seatNumber}
     </button>
   );
