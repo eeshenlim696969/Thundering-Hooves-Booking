@@ -55,13 +55,9 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
         <div className="flex justify-between items-center mb-3">
           <div className="flex flex-col">
             <span className="text-white/40 text-[9px] uppercase font-black tracking-widest">Position</span>
-            
-            {/* --- FIX IS HERE: Forces Table 4 to display as 3A --- */}
-            <span className="text-sm font-black text-white uppercase tracking-tight">
-              Table {tableId === '4' ? '3A' : tableId} • Seat {seatNumber}
-            </span>
-            {/* --------------------------------------------------- */}
-
+            {/* --- CHANGED LINE START --- */}
+            <span className="text-sm font-black text-white uppercase tracking-tight">Table {tableId === '4' ? '3A' : tableId} • Seat {seatNumber}</span>
+            {/* --- CHANGED LINE END --- */}
           </div>
           <div className="text-right">
              <span className="text-white/40 text-[9px] uppercase font-black tracking-widest">Price</span>
