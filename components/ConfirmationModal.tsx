@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SeatData, SeatStatus, SeatTier, SeatDetail } from '../types';
-import { X, Ticket, ShieldCheck, ArrowRight, Leaf, User, Fingerprint, Clock, Trash2, ChevronLeft, Loader2 } from 'lucide-react';
+import { X, Ticket, ShieldCheck, ArrowRight, Leaf, User, Fingerprint, Clock, Trash2, ChevronLeft, Loader2, Users } from 'lucide-react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
     setDetails(prev => {
       const next: Record<string, SeatDetail> = {};
       seats.forEach(seat => {
+        // Default studentId is empty, which will force the user to pick from the dropdown
         next[seat.id] = prev[seat.id] || { studentName: '', studentId: '', isMember: false, isVegan: false };
       });
       return next;
@@ -58,13 +59,13 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
   const isFormValid = seats.length > 0 && seats.every(seat => {
     const d = details[seat.id];
-    return d?.studentName.trim().length >= 3 && d?.studentId.trim().length >= 4;
+    // Form is valid if name is long enough and a category is selected from the dropdown
+    return d?.studentName.trim().length >= 3 && d?.studentId.length > 0;
   });
 
   const handleConfirmAction = async () => {
     if (!isFormValid || isSubmitting) return;
     setIsSubmitting(true);
-    // Add small delay for aesthetic feedback
     setTimeout(() => {
       onConfirm(details);
     }, 400);
@@ -101,7 +102,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <span className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center text-[10px] font-black">{index + 1}</span>
-                      <h4 className="font-black text-stone-900 uppercase">Table {seat.tableId} / Seat {seat.seatNumber}</h4>
+                      {/* UPDATED: Manual change to Table 3A */}
+                      <h4 className="font-black text-stone-900 uppercase">Table 3A / Seat {seat.seatNumber}</h4>
                     </div>
                     <button onClick={() => onRemoveSeat?.(seat.id)} className="p-2 text-stone-300 hover:text-red-500 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                   </div>
@@ -111,9 +113,20 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
                       <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><User className="w-3 h-3" /> Full Name</label>
                       <input type="text" placeholder="Attendee Name" value={d.studentName} onChange={(e) => updateDetail(seat.id, 'studentName', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none" />
                     </div>
+                    
+                    {/* UPDATED: Dropdown Selection for ID/Category */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Fingerprint className="w-3 h-3" /> Student ID</label>
-                      <input type="text" placeholder="Enter Student ID" value={d.studentId} onChange={(e) => updateDetail(seat.id, 'studentId', e.target.value.toUpperCase())} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm font-mono outline-none" />
+                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Users className="w-3 h-3" /> Attendee Type</label>
+                      <select 
+                        value={d.studentId} 
+                        onChange={(e) => updateDetail(seat.id, 'studentId', e.target.value)} 
+                        className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none appearance-none cursor-pointer hover:border-amber-300 transition-colors"
+                      >
+                        <option value="">-- Select Category --</option>
+                        <option value="Outsider">Outsider</option>
+                        <option value="Vitroxian">Vitroxian</option>
+                        <option value="VitroxStudent">ViTrox Student</option>
+                      </select>
                     </div>
                   </div>
 
@@ -129,21 +142,21 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
         <div className="p-8 bg-[#fafafa] border-t border-stone-100 shrink-0 space-y-4">
            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div>
-                <span className="font-black text-stone-400 uppercase text-[10px] tracking-[0.3em]">TOTAL DUE</span>
-                <div className="text-3xl font-black text-[#5c1a1a] font-mono">RM {totalPrice.toFixed(2)}</div>
-              </div>
-              <button
-                onClick={handleConfirmAction}
-                disabled={!isFormValid || timeLeft === 0 || isSubmitting}
-                className="w-full md:w-auto px-10 py-5 bg-[#d4af37] disabled:bg-stone-200 text-[#5c1a1a] font-black uppercase tracking-[0.2em] rounded-[24px] shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
-              >
-                {isSubmitting ? (
-                  <>Processing... <Loader2 className="w-6 h-6 animate-spin" /></>
-                ) : (
-                  <>Proceed to Checkout <ArrowRight className="w-6 h-6" /></>
-                )}
-              </button>
+             <div>
+               <span className="font-black text-stone-400 uppercase text-[10px] tracking-[0.3em]">TOTAL DUE</span>
+               <div className="text-3xl font-black text-[#5c1a1a] font-mono">RM {totalPrice.toFixed(2)}</div>
+             </div>
+             <button
+               onClick={handleConfirmAction}
+               disabled={!isFormValid || timeLeft === 0 || isSubmitting}
+               className="w-full md:w-auto px-10 py-5 bg-[#d4af37] disabled:bg-stone-200 text-[#5c1a1a] font-black uppercase tracking-[0.2em] rounded-[24px] shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
+             >
+               {isSubmitting ? (
+                 <>Processing... <Loader2 className="w-6 h-6 animate-spin" /></>
+               ) : (
+                 <>Proceed to Checkout <ArrowRight className="w-6 h-6" /></>
+               )}
+             </button>
            </div>
            <button onClick={onClose} disabled={isSubmitting} className="w-full h-11 border border-yellow-600/50 text-yellow-500 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] flex items-center justify-center transition-opacity hover:opacity-80">
              Cancel Registration
@@ -153,4 +166,3 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
     </div>
   );
 };
-
