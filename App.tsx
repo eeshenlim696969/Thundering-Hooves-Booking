@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
+const LOCK_DURATION_SECONDS = 300; // 5 Minutes
 
 type AuraType = 'PLATINUM' | 'GOLD' | 'SILVER';
 
@@ -154,9 +155,8 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               // --- FIX: Force '3A' to the seat component to trick the Tooltip ---
+               // FIX: Force '3A' to the seat component to trick the Tooltip
                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId) as any}} 
-               // ------------------------------------------------------------------
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
                isLockedByOther={seat.status !== SeatStatus.AVAILABLE && !mySelectedIds.includes(seat.id)} 
@@ -196,7 +196,7 @@ export const App: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [selectedAdminSeat, setSelectedAdminSeat] = useState<SeatData | null>(null);
 
-  const [timeLeft, setTimeLeft] = useState(300); 
+  const [timeLeft, setTimeLeft] = useState(LOCK_DURATION_SECONDS); 
   const [isTimerActive, setIsTimerActive] = useState(false);
 
   // Gacha Logic
@@ -303,36 +303,49 @@ export const App: React.FC = () => {
     return () => unsubscribe(); 
   }, [config]);
 
-  // --- CRITICAL FIX 1: SESSION RECOVERY (ZOMBIE LOCK FIX) ---
-  // If user refreshes page, find seats they locked and restore them to selection
+
+  // --- CRITICAL FIX 1: SESSION RECOVERY & TIMER SYNC ---
+  // Calculates real remaining time from the server timestamp so reloading works
   useEffect(() => {
     if (seats.length > 0 && currentUserId) {
-       const recoveredIds = seats
-         .filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId)
-         .map(s => s.id);
+       // Find any seats locked by THIS user that are still in CHECKOUT
+       const recoveredSeats = seats.filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId);
        
-       if (recoveredIds.length > 0) {
-         setMySelectedIds(prev => {
-            // Only add if not already selected (prevents loops)
-            const unique = new Set([...prev, ...recoveredIds]);
-            return Array.from(unique);
-         });
-         // If we found lost seats, ensure we go to cart/hall to show them
-         if (view === 'home') {
-            // Optional: could force view change, but user might want to see intro
-            // setView('hall'); 
+       if (recoveredSeats.length > 0) {
+         // 1. Recover Selection
+         const recoveredIds = recoveredSeats.map(s => s.id);
+         setMySelectedIds(prev => Array.from(new Set([...prev, ...recoveredIds])));
+         
+         // 2. Sync Timer
+         // Use the oldest lock time to be safe (or newest)
+         const lockTime = recoveredSeats[0].lockedAt || Date.now();
+         const elapsedSeconds = Math.floor((Date.now() - lockTime) / 1000);
+         const remaining = LOCK_DURATION_SECONDS - elapsedSeconds;
+
+         if (remaining > 0) {
+             setTimeLeft(remaining);
+             setIsTimerActive(true);
+             
+             // If we are on home screen but have active checkout, go to hall so they see it
+             if (view === 'home' && !showAnnouncement) {
+                 // setView('hall'); // Optional: Auto-redirect
+             }
+         } else {
+             // Timer expired while away? Clean it up immediately.
+             handleCheckoutCleanup();
          }
        }
     }
-  }, [seats, currentUserId, view]);
-  // -----------------------------------------------------------
+  }, [seats, currentUserId, view, showAnnouncement]);
+  // -----------------------------------------------------
 
-  // --- CRITICAL FIX 2: TIMER AUTO-RELEASE ---
+  // --- CRITICAL FIX 2: AUTO-RELEASE ON TIMEOUT ---
   const handleCheckoutCleanup = useCallback(async () => {
     setIsTimerActive(false);
     try {
       const idsToReset = [...mySelectedIds];
       if (idsToReset.length > 0) {
+        // Only release seats that I actually own
         const bookings = idsToReset.map(id => ({
           seatId: id,
           data: {
@@ -359,7 +372,7 @@ export const App: React.FC = () => {
       timerId = window.setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            // Timer Hit 0: Auto-cleanup database
+            // Timer Hit 0: Auto-cleanup database immediately
             handleCheckoutCleanup(); 
             return 0;
           }
@@ -369,7 +382,7 @@ export const App: React.FC = () => {
     }
     return () => clearInterval(timerId);
   }, [isTimerActive, timeLeft, handleCheckoutCleanup]);
-  // ------------------------------------------
+  // ------------------------------------------------
 
   useEffect(() => { seatsRef.current = seats; }, [seats]);
 
@@ -399,7 +412,7 @@ export const App: React.FC = () => {
         }
       }));
       await submitBatchBookingRequest(bookings);
-      setTimeLeft(300); 
+      setTimeLeft(LOCK_DURATION_SECONDS); 
       setIsTimerActive(true);
       setConfirmOpen(true);
     } catch (e) {
@@ -603,11 +616,10 @@ export const App: React.FC = () => {
                     <div key={s.id} className="flex items-center justify-between p-4 md:p-6 bg-stone-50 rounded-2xl md:rounded-3xl border border-stone-100">
                       <div className="flex items-center gap-4 md:gap-6">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-stone-900 text-white rounded-xl flex flex-col items-center justify-center font-black">
-                          {/* --- FIX: CART TEXT FOR TABLE 4 --- */}
+                          {/* FIX: CART TEXT FOR TABLE 4 */}
                           <span className="text-[6px] md:text-[7px] opacity-40 uppercase">
                             T-{s.tableId === 4 ? '3A' : s.tableId}
                           </span>
-                          {/* ---------------------------------- */}
                           <span className="text-sm md:text-base">{s.seatNumber}</span>
                         </div>
                         <p className="font-black text-stone-800 uppercase text-sm md:text-lg">{config.tiers[s.tier].label}</p>
