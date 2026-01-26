@@ -370,7 +370,6 @@ export const App: React.FC = () => {
       timerId = window.setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            // Timer Hit 0: Auto-cleanup database immediately
             handleCheckoutCleanup(); 
             return 0;
           }
@@ -719,7 +718,6 @@ export const App: React.FC = () => {
           setPendingDetails(d); 
           
           // --- UPDATED LOGIC: BUY 2 FREE 1 + MEMBER DISCOUNT ---
-          // 1. Calculate price for EACH seat (considering member discount)
           const seatPrices = Object.entries(d).map(([id, det]) => {
              const seat = seats.find(st => st.id === id);
              const basePrice = seat?.price || 0;
@@ -729,11 +727,10 @@ export const App: React.FC = () => {
              };
           });
 
-          // 2. Sort by Price Descending (Highest First)
-          // We want the FREE items to be the cheapest ones (standard retail logic)
+          // Sort by Price Descending (Highest First)
           seatPrices.sort((a, b) => b.finalPrice - a.finalPrice);
 
-          // 3. Apply "Every 3rd item is free" logic
+          // Apply "Every 3rd item is free" logic
           let runningTotal = 0;
           seatPrices.forEach((item, index) => {
              // If index + 1 is divisible by 3, it's free. (3rd, 6th, 9th...)
@@ -742,7 +739,6 @@ export const App: React.FC = () => {
              }
           });
 
-          // 4. Update Total
           setTotalPrice(runningTotal); 
           setConfirmOpen(false); 
           setPaymentOpen(true); 
@@ -775,9 +771,6 @@ export const App: React.FC = () => {
       />
     </div>
   );
-};
-
-export default App;
 };
 
 export default App;
