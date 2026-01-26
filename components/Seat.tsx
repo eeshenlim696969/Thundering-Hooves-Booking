@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { SeatData, SeatStatus, SeatTier } from '../types';
 import { User, Lock, Clock, Loader2, Leaf, Utensils } from 'lucide-react';
@@ -18,6 +17,10 @@ const CLICK_SOUND_URL = 'https://www.soundjay.com/misc/sounds/bubble-pop-1.mp3';
 
 export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, isLockedByOther, style, className, isAdmin }) => {
   const { status, tableId, seatNumber, tier, paymentInfo } = data;
+  
+  // --- MANDATORY FIX: Force Table 4 to display as 3A ---
+  const displayTableId = tableId === '4' ? '3A' : tableId;
+
   const [waves, setWaves] = useState<{ id: number; color: string }[]>([]);
   const [isPopping, setIsPopping] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -56,7 +59,8 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
         <div className="flex justify-between items-center mb-3">
           <div className="flex flex-col">
             <span className="text-white/40 text-[9px] uppercase font-black tracking-widest">Position</span>
-            <span className="text-sm font-black text-white uppercase tracking-tight">Table {tableId} • Seat {seatNumber}</span>
+            {/* FIXED: Using displayTableId here */}
+            <span className="text-sm font-black text-white uppercase tracking-tight">Table {displayTableId} • Seat {seatNumber}</span>
           </div>
           <div className="text-right">
              <span className="text-white/40 text-[9px] uppercase font-black tracking-widest">Price</span>
@@ -131,13 +135,13 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
       style={{ ...style, borderColor: isSelected ? undefined : color }}
       className={`${baseClasses} ${activeStyle} ${className || ''} ${cursorClass} ${isPopping ? 'animate-seat-pop' : ''}`}
     >
-       <Tooltip />
-       {waves.map(w => (
-         <React.Fragment key={w.id}>
-            <div className="energetic-burst" style={{ '--wave-color': w.color, borderColor: w.color } as React.CSSProperties} />
-         </React.Fragment>
-       ))}
-       {isSelected ? <User className="w-5 h-5 animate-pulse" /> : seatNumber}
+        <Tooltip />
+        {waves.map(w => (
+          <React.Fragment key={w.id}>
+             <div className="energetic-burst" style={{ '--wave-color': w.color, borderColor: w.color } as React.CSSProperties} />
+          </React.Fragment>
+        ))}
+        {isSelected ? <User className="w-5 h-5 animate-pulse" /> : seatNumber}
     </button>
   );
 };
