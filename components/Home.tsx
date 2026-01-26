@@ -30,7 +30,7 @@ export const Home: React.FC<HomeProps> = ({ onEnterHall }) => {
         <div className="mb-6 flex flex-col items-center">
            <div className="w-20 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent mb-4" />
            <p className="text-[#d4af37] text-xs md:text-sm font-black uppercase tracking-[0.8em] md:tracking-[1.2em] mb-2 drop-shadow-lg">
-             Vitrox College Presents
+             Music & Performing Arts Club Presents
            </p>
            <div className="w-20 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent mt-4" />
         </div>
