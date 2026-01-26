@@ -14,7 +14,7 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Megaphone, Gift
+  LogOut, Ticket, X, Zap, Trophy, Gift
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
@@ -58,7 +58,7 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
   }
 };
 
-// --- UPDATED PRICES ---
+// --- UPDATED PRICES HERE ---
 const DEFAULT_CONFIG: ConcertConfig = {
   totalTables: 14,
   section1Count: 6,
@@ -78,14 +78,14 @@ const DEFAULT_CONFIG: ConcertConfig = {
   }
 };
 
-// --- NEW HIGH-VISIBILITY PROMO BANNER ---
+// --- PROMO BANNER ---
 const PromoBanner = () => (
   <div className="w-full bg-gradient-to-r from-red-700 via-red-500 to-red-700 text-[#fff7ed] py-3 px-4 shadow-[0_10px_20px_rgba(220,38,38,0.5)] animate-pulse flex items-center justify-center gap-3 z-50 sticky top-[70px] md:top-[80px] border-y-2 border-[#d4af37]">
-    <Megaphone className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
+    <Sparkles className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
     <span className="text-xs md:text-lg font-black uppercase tracking-widest text-center drop-shadow-md">
       CNY OFFER: <span className="text-yellow-300 underline decoration-wavy decoration-yellow-500">BUY 2 FREE 1</span> (SAME TIER ONLY)! 🧧
     </span>
-    <Gift className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
+    <Sparkles className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
   </div>
 );
 
@@ -167,8 +167,8 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               // FIX: Force '3A' to the seat component to trick the Tooltip
-               data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId) as any}} 
+               // FIX: Force '3A' to the seat component to trick the Tooltip (using 'as any' to avoid TS error)
+               data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any} 
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
                isLockedByOther={seat.status !== SeatStatus.AVAILABLE && !mySelectedIds.includes(seat.id)} 
@@ -432,24 +432,19 @@ export const App: React.FC = () => {
     const timer = setInterval(() => {
       const randomSeat = available[Math.floor(Math.random() * available.length)];
       setSpinningSeatId(randomSeat.id);
-      
       const el = document.getElementById(`seat-${randomSeat.id}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-
       count++;
-
       if (count >= iterations) {
         clearInterval(timer);
         const luckySeat = available[Math.floor(Math.random() * available.length)];
         setSpinningSeatId(luckySeat.id);
-        
         const finalEl = document.getElementById(`seat-${luckySeat.id}`);
         if (finalEl) {
           finalEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-
         setTimeout(() => {
           setSpinningSeatId(null);
           setMySelectedIds([luckySeat.id]);
@@ -471,6 +466,34 @@ export const App: React.FC = () => {
     setView(newView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // --- CART ESTIMATOR LOGIC ---
+  const cartTotalEstimation = useMemo(() => {
+    if (mySelectedSeats.length === 0) return 0;
+    
+    // Simple estimation for display (Buy 2 Free 1 per tier)
+    // We group by tier to estimate the free ones
+    const seatsByTier: Record<string, number[]> = {};
+    let total = 0;
+
+    mySelectedSeats.forEach(s => {
+      if (!seatsByTier[s.tier]) seatsByTier[s.tier] = [];
+      seatsByTier[s.tier].push(s.price);
+    });
+
+    Object.values(seatsByTier).forEach(prices => {
+      // Sort desc
+      prices.sort((a, b) => b - a);
+      prices.forEach((price, idx) => {
+        // Buy 2 Free 1 logic: 3rd, 6th, 9th are free
+        if ((idx + 1) % 3 !== 0) {
+          total += price;
+        }
+      });
+    });
+    return total;
+  }, [mySelectedSeats]);
+  // ----------------------------
 
   if (loading) return <div className="h-full w-full flex items-center justify-center bg-[#0d0101] text-[#d4af37] font-black text-xl md:text-2xl uppercase tracking-widest px-6 text-center"><RefreshCw className="animate-spin mr-4 shrink-0" /> Synchronizing Hall...</div>;
 
@@ -626,15 +649,18 @@ export const App: React.FC = () => {
                     </div>
                   ))}
                   
-                  {/* --- PROMO TEXT IN CART --- */}
-                  {mySelectedSeats.length >= 3 && (
-                     <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex items-center gap-3">
-                        <Gift className="w-5 h-5 text-red-500" />
-                        <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
-                          CNY PROMO APPLIED: BUY 2 FREE 1! (Per Tier)
-                        </p>
+                  {/* --- VISIBLE PROMO TEXT IN CART --- */}
+                  <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col gap-2">
+                     <div className="flex items-center gap-2">
+                       <Gift className="w-5 h-5 text-red-500" />
+                       <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
+                         Buy 2 Free 1 Applied (Per Tier)
+                       </p>
                      </div>
-                  )}
+                     <p className="text-right font-serif font-black text-xl text-stone-900">
+                       Est. Total: RM {cartTotalEstimation.toFixed(2)}
+                     </p>
+                  </div>
                   {/* ------------------------- */}
 
                   <button onClick={() => handleProceedToCheckout()} disabled={mySelectedSeats.length === 0} className="w-full py-4 md:py-6 bg-[#d4af37] text-[#5c1a1a] rounded-[24px] md:rounded-3xl font-black text-lg md:text-xl uppercase shadow-xl hover:scale-[1.02] transition-all disabled:bg-stone-200">Checkout</button>
@@ -714,7 +740,7 @@ export const App: React.FC = () => {
         onConfirm={(d: Record<string, SeatDetail>) => { 
           setPendingDetails(d); 
           
-          // --- UPDATED STRICT LOGIC: BUY 2 FREE 1 (PER TIER) ---
+          // --- CONFIRMATION MODAL LOGIC: BUY 2 FREE 1 (PER TIER) ---
           const seatPrices = Object.entries(d).map(([id, det]) => {
              const seat = seats.find(st => st.id === id);
              const basePrice = seat?.price || 0;
@@ -728,8 +754,10 @@ export const App: React.FC = () => {
           // Group by Tier
           const seatsByTier: Record<string, typeof seatPrices> = {};
           seatPrices.forEach(s => {
-             if (!seatsByTier[s.tier]) seatsByTier[s.tier] = [];
-             seatsByTier[s.tier].push(s);
+             // TS safe key assignment
+             const key = String(s.tier);
+             if (!seatsByTier[key]) seatsByTier[key] = [];
+             seatsByTier[key].push(s);
           });
 
           let runningTotal = 0;
@@ -740,7 +768,9 @@ export const App: React.FC = () => {
              group.sort((a, b) => b.finalPrice - a.finalPrice);
              
              group.forEach((item, index) => {
-                // If index+1 is multiple of 3 (3rd, 6th, 9th), it is free
+                // Buy 2 Free 1: You pay for #1, #2. #3 is free.
+                // Index 0, 1 (Pay). Index 2 (Free).
+                // (2 + 1) % 3 === 0.
                 if ((index + 1) % 3 !== 0) {
                    runningTotal += item.finalPrice;
                 }
@@ -779,9 +809,6 @@ export const App: React.FC = () => {
       />
     </div>
   );
-};
-
-export default App;
 };
 
 export default App;
