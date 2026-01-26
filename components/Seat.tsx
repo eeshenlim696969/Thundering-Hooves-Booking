@@ -21,6 +21,13 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
   const [isPopping, setIsPopping] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // --- LUCKY NUMBER LOGIC ---
+  // 1. If Seat is 4, show 3A
+  const displaySeatNum = seatNumber === 4 ? '3A' : seatNumber;
+  // 2. If Table is 4, show 3A
+  const displayTableId = String(tableId) === '4' ? '3A' : tableId;
+  // --------------------------
+
   useEffect(() => {
     audioRef.current = new Audio(CLICK_SOUND_URL);
     audioRef.current.volume = 0.5;
@@ -50,9 +57,9 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
         <div className="flex justify-between items-center mb-3">
           <div className="flex flex-col">
             <span className="text-white/40 text-[9px] uppercase font-black tracking-widest">Position</span>
-            {/* FIX: Force Table 4 to display as 3A */}
+            {/* UPDATED: Uses the display variables for Table and Seat */}
             <span className="text-sm font-black text-white uppercase tracking-tight">
-               Table {String(tableId) === '4' ? '3A' : tableId} • Seat {seatNumber}
+               Table {displayTableId} • Seat {displaySeatNum}
             </span>
           </div>
           <div className="text-right">
@@ -127,7 +134,8 @@ export const Seat: React.FC<SeatProps> = ({ data, color, onClick, isSelected, is
              <div className="energetic-burst" style={{ '--wave-color': w.color, borderColor: w.color } as React.CSSProperties} />
           </React.Fragment>
         ))}
-        {isSelected ? <User className="w-5 h-5 animate-pulse" /> : seatNumber}
+        {/* UPDATED: Shows 3A if the number is 4 */}
+        {isSelected ? <User className="w-5 h-5 animate-pulse" /> : displaySeatNum}
     </button>
   );
 };
