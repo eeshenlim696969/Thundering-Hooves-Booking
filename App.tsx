@@ -14,7 +14,7 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy
+  LogOut, Ticket, X, Zap, Trophy, Megaphone, Gift
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
@@ -58,6 +58,7 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
   }
 };
 
+// --- UPDATED PRICES HERE ---
 const DEFAULT_CONFIG: ConcertConfig = {
   totalTables: 14,
   section1Count: 6,
@@ -65,9 +66,9 @@ const DEFAULT_CONFIG: ConcertConfig = {
   section3Count: 4,
   seatsPerTable: 6,
   tiers: {
-    [SeatTier.PLATINUM]: { price: 20.88, color: '#b91c1c', label: 'Platinum VIP' },      
-    [SeatTier.GOLD]: { price: 18.88, color: '#d97706', label: 'Golden Tier' }, 
-    [SeatTier.SILVER]: { price: 16.88, color: '#57534e', label: 'Silver Tier' }, 
+    [SeatTier.PLATINUM]: { price: 25.88, color: '#b91c1c', label: 'Platinum VIP' },      
+    [SeatTier.GOLD]: { price: 22.88, color: '#d97706', label: 'Golden Tier' }, 
+    [SeatTier.SILVER]: { price: 18.88, color: '#57534e', label: 'Silver Tier' }, 
   },
   payment: {
     tngQrUrl: 'https://drive.google.com/thumbnail?id=17jpYGYSTDCZmvWYFTCZgSj1ND_jJa4r9&sz=w1000',
@@ -77,8 +78,19 @@ const DEFAULT_CONFIG: ConcertConfig = {
   }
 };
 
+// --- NEW COMPONENT: PROMO BANNER ---
+const PromoBanner = () => (
+  <div className="w-full bg-gradient-to-r from-red-600 via-red-500 to-red-600 text-white py-2 px-4 shadow-lg animate-pulse flex items-center justify-center gap-2 md:gap-4 z-50 sticky top-[70px] md:top-[80px]">
+    <Megaphone className="w-4 h-4 md:w-5 md:h-5 fill-yellow-400 text-yellow-900" />
+    <span className="text-[10px] md:text-sm font-black uppercase tracking-widest text-center">
+      CNY SPECIAL: <span className="text-yellow-300">BUY 2 FREE 1</span> ON ALL TICKETS! 🧧
+    </span>
+    <Gift className="w-4 h-4 md:w-5 md:h-5 fill-yellow-400 text-yellow-900" />
+  </div>
+);
+
 const Stage = () => (
-  <div className="w-full max-w-4xl mx-auto mb-20 relative px-4">
+  <div className="w-full max-w-4xl mx-auto mb-20 relative px-4 mt-8">
     <div className="h-28 md:h-40 bg-gradient-to-b from-stone-900 to-stone-950 rounded-t-[100px] border-x-[15px] md:border-x-[40px] border-stone-800 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.2)_0%,transparent_70%)]" />
       <div className="absolute top-0 left-0 w-full h-1 bg-[#d4af37]/40 shadow-[0_0_15px_#d4af37]" />
@@ -308,35 +320,22 @@ export const App: React.FC = () => {
   // Calculates real remaining time from the server timestamp so reloading works
   useEffect(() => {
     if (seats.length > 0 && currentUserId) {
-       // Find any seats locked by THIS user that are still in CHECKOUT
        const recoveredSeats = seats.filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId);
-       
        if (recoveredSeats.length > 0) {
-         // 1. Recover Selection
          const recoveredIds = recoveredSeats.map(s => s.id);
          setMySelectedIds(prev => Array.from(new Set([...prev, ...recoveredIds])));
-         
-         // 2. Sync Timer
-         // Use the oldest lock time to be safe (or newest)
          const lockTime = recoveredSeats[0].lockedAt || Date.now();
          const elapsedSeconds = Math.floor((Date.now() - lockTime) / 1000);
          const remaining = LOCK_DURATION_SECONDS - elapsedSeconds;
-
          if (remaining > 0) {
              setTimeLeft(remaining);
              setIsTimerActive(true);
-             
-             // If we are on home screen but have active checkout, go to hall so they see it
-             if (view === 'home' && !showAnnouncement) {
-                 // setView('hall'); // Optional: Auto-redirect
-             }
          } else {
-             // Timer expired while away? Clean it up immediately.
              handleCheckoutCleanup();
          }
        }
     }
-  }, [seats, currentUserId, view, showAnnouncement]);
+  }, [seats, currentUserId, view]);
   // -----------------------------------------------------
 
   // --- CRITICAL FIX 2: AUTO-RELEASE ON TIMEOUT ---
@@ -345,7 +344,6 @@ export const App: React.FC = () => {
     try {
       const idsToReset = [...mySelectedIds];
       if (idsToReset.length > 0) {
-        // Only release seats that I actually own
         const bookings = idsToReset.map(id => ({
           seatId: id,
           data: {
@@ -488,6 +486,10 @@ export const App: React.FC = () => {
         <Navbar currentView={view} onNavigate={handleNavigate} isAdmin={isAdmin} />
       )}
 
+      {/* --- PROMO BANNER --- */}
+      {!showAnnouncement && view === 'hall' && <PromoBanner />}
+      {/* ------------------- */}
+
       {showGachaModal && (
         <div 
           onClick={() => !isSpinning && setShowGachaModal(false)}
@@ -627,6 +629,18 @@ export const App: React.FC = () => {
                       <button onClick={() => handleSeatClick(s.id)} className="text-red-500 hover:scale-110"><Trash2 className="w-5 h-5" /></button>
                     </div>
                   ))}
+                  
+                  {/* --- PROMO TEXT IN CART --- */}
+                  {mySelectedSeats.length >= 3 && (
+                     <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex items-center gap-3">
+                        <Gift className="w-5 h-5 text-red-500" />
+                        <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
+                          CNY PROMO APPLIED: BUY 2 FREE 1!
+                        </p>
+                     </div>
+                  )}
+                  {/* ------------------------- */}
+
                   <button onClick={() => handleProceedToCheckout()} disabled={mySelectedSeats.length === 0} className="w-full py-4 md:py-6 bg-[#d4af37] text-[#5c1a1a] rounded-[24px] md:rounded-3xl font-black text-lg md:text-xl uppercase shadow-xl hover:scale-[1.02] transition-all disabled:bg-stone-200">Checkout</button>
               </div>
             </div>
@@ -703,13 +717,36 @@ export const App: React.FC = () => {
         onRemoveSeat={removeSeatFromCheckout}
         onConfirm={(d: Record<string, SeatDetail>) => { 
           setPendingDetails(d); 
-          const calcTotal = Object.entries(d).reduce((sum, [id, det]) => {
-            const seat = seats.find(st => st.id === id);
-            return sum + (det.isMember ? (seat?.price || 0) - MEMBER_DISCOUNT_AMOUNT : (seat?.price || 0));
-          }, 0);
-          setTotalPrice(calcTotal); 
+          
+          // --- UPDATED LOGIC: BUY 2 FREE 1 + MEMBER DISCOUNT ---
+          // 1. Calculate price for EACH seat (considering member discount)
+          const seatPrices = Object.entries(d).map(([id, det]) => {
+             const seat = seats.find(st => st.id === id);
+             const basePrice = seat?.price || 0;
+             return {
+                id,
+                finalPrice: det.isMember ? basePrice - MEMBER_DISCOUNT_AMOUNT : basePrice
+             };
+          });
+
+          // 2. Sort by Price Descending (Highest First)
+          // We want the FREE items to be the cheapest ones (standard retail logic)
+          seatPrices.sort((a, b) => b.finalPrice - a.finalPrice);
+
+          // 3. Apply "Every 3rd item is free" logic
+          let runningTotal = 0;
+          seatPrices.forEach((item, index) => {
+             // If index + 1 is divisible by 3, it's free. (3rd, 6th, 9th...)
+             if ((index + 1) % 3 !== 0) {
+                runningTotal += item.finalPrice;
+             }
+          });
+
+          // 4. Update Total
+          setTotalPrice(runningTotal); 
           setConfirmOpen(false); 
           setPaymentOpen(true); 
+          // ----------------------------------------------------
         }} 
       />
       
@@ -738,6 +775,9 @@ export const App: React.FC = () => {
       />
     </div>
   );
+};
+
+export default App;
 };
 
 export default App;
