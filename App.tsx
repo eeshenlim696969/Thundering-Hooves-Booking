@@ -58,7 +58,7 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
   }
 };
 
-// --- UPDATED PRICES HERE ---
+// --- UPDATED PRICES ---
 const DEFAULT_CONFIG: ConcertConfig = {
   totalTables: 14,
   section1Count: 6,
@@ -78,14 +78,14 @@ const DEFAULT_CONFIG: ConcertConfig = {
   }
 };
 
-// --- NEW COMPONENT: PROMO BANNER ---
+// --- NEW HIGH-VISIBILITY PROMO BANNER ---
 const PromoBanner = () => (
-  <div className="w-full bg-gradient-to-r from-red-600 via-red-500 to-red-600 text-white py-2 px-4 shadow-lg animate-pulse flex items-center justify-center gap-2 md:gap-4 z-50 sticky top-[70px] md:top-[80px]">
-    <Megaphone className="w-4 h-4 md:w-5 md:h-5 fill-yellow-400 text-yellow-900" />
-    <span className="text-[10px] md:text-sm font-black uppercase tracking-widest text-center">
-      CNY SPECIAL: <span className="text-yellow-300">BUY 2 FREE 1</span> ON ALL TICKETS! 🧧
+  <div className="w-full bg-gradient-to-r from-red-700 via-red-500 to-red-700 text-[#fff7ed] py-3 px-4 shadow-[0_10px_20px_rgba(220,38,38,0.5)] animate-pulse flex items-center justify-center gap-3 z-50 sticky top-[70px] md:top-[80px] border-y-2 border-[#d4af37]">
+    <Megaphone className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
+    <span className="text-xs md:text-lg font-black uppercase tracking-widest text-center drop-shadow-md">
+      CNY OFFER: <span className="text-yellow-300 underline decoration-wavy decoration-yellow-500">BUY 2 FREE 1</span> (SAME TIER ONLY)! 🧧
     </span>
-    <Gift className="w-4 h-4 md:w-5 md:h-5 fill-yellow-400 text-yellow-900" />
+    <Gift className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
   </div>
 );
 
@@ -317,7 +317,6 @@ export const App: React.FC = () => {
 
 
   // --- CRITICAL FIX 1: SESSION RECOVERY & TIMER SYNC ---
-  // Calculates real remaining time from the server timestamp so reloading works
   useEffect(() => {
     if (seats.length > 0 && currentUserId) {
        const recoveredSeats = seats.filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId);
@@ -336,7 +335,6 @@ export const App: React.FC = () => {
        }
     }
   }, [seats, currentUserId, view]);
-  // -----------------------------------------------------
 
   // --- CRITICAL FIX 2: AUTO-RELEASE ON TIMEOUT ---
   const handleCheckoutCleanup = useCallback(async () => {
@@ -379,7 +377,6 @@ export const App: React.FC = () => {
     }
     return () => clearInterval(timerId);
   }, [isTimerActive, timeLeft, handleCheckoutCleanup]);
-  // ------------------------------------------------
 
   useEffect(() => { seatsRef.current = seats; }, [seats]);
 
@@ -634,7 +631,7 @@ export const App: React.FC = () => {
                      <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex items-center gap-3">
                         <Gift className="w-5 h-5 text-red-500" />
                         <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
-                          CNY PROMO APPLIED: BUY 2 FREE 1!
+                          CNY PROMO APPLIED: BUY 2 FREE 1! (Per Tier)
                         </p>
                      </div>
                   )}
@@ -717,26 +714,37 @@ export const App: React.FC = () => {
         onConfirm={(d: Record<string, SeatDetail>) => { 
           setPendingDetails(d); 
           
-          // --- UPDATED LOGIC: BUY 2 FREE 1 + MEMBER DISCOUNT ---
+          // --- UPDATED STRICT LOGIC: BUY 2 FREE 1 (PER TIER) ---
           const seatPrices = Object.entries(d).map(([id, det]) => {
              const seat = seats.find(st => st.id === id);
              const basePrice = seat?.price || 0;
              return {
                 id,
+                tier: seat?.tier || SeatTier.SILVER,
                 finalPrice: det.isMember ? basePrice - MEMBER_DISCOUNT_AMOUNT : basePrice
              };
           });
 
-          // Sort by Price Descending (Highest First)
-          seatPrices.sort((a, b) => b.finalPrice - a.finalPrice);
+          // Group by Tier
+          const seatsByTier: Record<string, typeof seatPrices> = {};
+          seatPrices.forEach(s => {
+             if (!seatsByTier[s.tier]) seatsByTier[s.tier] = [];
+             seatsByTier[s.tier].push(s);
+          });
 
-          // Apply "Every 3rd item is free" logic
           let runningTotal = 0;
-          seatPrices.forEach((item, index) => {
-             // If index + 1 is divisible by 3, it's free. (3rd, 6th, 9th...)
-             if ((index + 1) % 3 !== 0) {
-                runningTotal += item.finalPrice;
-             }
+
+          // Apply logic per tier group
+          Object.values(seatsByTier).forEach(group => {
+             // Sort highest to lowest (usually equal in a tier, but safe for member discounts)
+             group.sort((a, b) => b.finalPrice - a.finalPrice);
+             
+             group.forEach((item, index) => {
+                // If index+1 is multiple of 3 (3rd, 6th, 9th), it is free
+                if ((index + 1) % 3 !== 0) {
+                   runningTotal += item.finalPrice;
+                }
+             });
           });
 
           setTotalPrice(runningTotal); 
@@ -771,6 +779,9 @@ export const App: React.FC = () => {
       />
     </div>
   );
+};
+
+export default App;
 };
 
 export default App;
