@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SeatData, SeatStatus } from '../types';
-import { X, Trash2, Leaf, CheckCircle2, Eye, Loader2, ShieldCheck, RotateCcw, FileText, Download, Hash } from 'lucide-react';
+import { X, Trash2, Leaf, CheckCircle2, Eye, Loader2, ShieldCheck, RotateCcw, FileText, Hash, Clock, Users } from 'lucide-react';
 
 interface AdminSeatDetailsModalProps {
   isOpen: boolean;
@@ -15,8 +15,29 @@ export const AdminSeatDetailsModal: React.FC<AdminSeatDetailsModalProps> = ({ is
   const [isProcessing, setIsProcessing] = useState(false);
   const [expandedReceipt, setExpandedReceipt] = useState(false);
   const [imageError, setImageError] = useState(false);
+  
+  // --- NEW: 5-Minute Grace Timer State ---
+  const [timeLeft, setTimeLeft] = useState(300);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen && seat?.status !== SeatStatus.SOLD) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    } else {
+      setTimeLeft(300); // Reset when closed or confirmed
+    }
+    return () => clearInterval(timer);
+  }, [isOpen, seat?.status]);
 
   if (!isOpen || !seat) return null;
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   const handleClose = () => {
     setExpandedReceipt(false);
@@ -25,7 +46,7 @@ export const AdminSeatDetailsModal: React.FC<AdminSeatDetailsModalProps> = ({ is
   };
 
   const handleWipe = async () => {
-    if (window.confirm('Confirm Reset: This will clear all guest data and release the seat.')) {
+    if (window.confirm('Confirm Reset: This will clear all guest data and release Table 3A.')) {
       setIsProcessing(true);
       try {
         await onReset(seat.id);
@@ -77,12 +98,23 @@ export const AdminSeatDetailsModal: React.FC<AdminSeatDetailsModalProps> = ({ is
           <div className="p-6 border-b border-stone-200 flex items-center justify-between">
             <div>
               <h3 className="text-xl font-serif font-black text-stone-900 leading-none">Control Pad</h3>
-              <p className="text-[8px] uppercase font-black text-stone-400 mt-1.5 tracking-[0.3em]">Seat T{seat.tableId}-{seat.seatNumber}</p>
+              {/* UPDATED: Manual Change to Table 3A */}
+              <p className="text-[8px] uppercase font-black text-amber-600 mt-1.5 tracking-[0.3em]">TABLE 3A - SEAT {seat.seatNumber}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-stone-100 rounded-full transition-colors"><X className="w-5 h-5 text-stone-400" /></button>
           </div>
 
           <div className="flex-1 p-6 space-y-5 overflow-y-auto custom-scrollbar">
+            {/* NEW: Admin Grace Timer Display */}
+            {!isSold && seat.status !== SeatStatus.AVAILABLE && (
+              <div className={`flex items-center justify-center gap-2 p-2 rounded-full border-2 border-dashed ${timeLeft < 60 ? 'bg-red-50 border-red-200 animate-pulse' : 'bg-stone-50 border-stone-200'}`}>
+                <Clock className={`w-3 h-3 ${timeLeft < 60 ? 'text-red-500' : 'text-stone-400'}`} />
+                <p className={`text-[10px] font-black uppercase tracking-tighter ${timeLeft < 60 ? 'text-red-600' : 'text-stone-500'}`}>
+                  Grace Period: {formatTime(timeLeft)}
+                </p>
+              </div>
+            )}
+
             {seat.status === SeatStatus.AVAILABLE ? (
               <div className="py-12 text-center space-y-4">
                 <ShieldCheck className="w-12 h-12 text-stone-200 mx-auto" />
@@ -97,17 +129,25 @@ export const AdminSeatDetailsModal: React.FC<AdminSeatDetailsModalProps> = ({ is
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2">
+                    {/* UPDATED: Category List Selection Logic */}
                     <div className="p-2 bg-stone-50 rounded-lg border border-stone-100">
-                      <p className="text-[7px] font-black text-stone-400 uppercase tracking-widest mb-0.5">Student ID</p>
-                      <p className="text-[10px] font-mono font-bold text-stone-700">{info?.studentId || 'N/A'}</p>
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <Users className="w-2 h-2 text-stone-400" />
+                        <p className="text-[7px] font-black text-stone-400 uppercase tracking-widest">ID Type</p>
+                      </div>
+                      <p className="text-[9px] font-black text-stone-700 uppercase">
+                        {info?.studentId === 'VitroxStudent' ? 'ViTrox Student' : 
+                         info?.studentId === 'Vitroxian' ? 'Vitroxian' : 
+                         info?.studentId === 'Outsider' ? 'Outsider' : (info?.studentId || 'N/A')}
+                      </p>
                     </div>
+
                     <div className="p-2 bg-stone-50 rounded-lg border border-stone-100">
                       <p className="text-[7px] font-black text-stone-400 uppercase tracking-widest mb-0.5">Meal Preference</p>
                       <p className={`text-[9px] font-black uppercase ${info?.isVegan ? 'text-green-600' : 'text-stone-400'}`}>{info?.isVegan ? 'Vegan' : 'Standard'}</p>
                     </div>
                   </div>
 
-                  {/* Prominent Payment Reference Number */}
                   <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
                     <div className="flex items-center gap-1.5 mb-1">
                       <Hash className="w-3 h-3 text-amber-600" />
@@ -122,12 +162,7 @@ export const AdminSeatDetailsModal: React.FC<AdminSeatDetailsModalProps> = ({ is
                     <div className="space-y-2">
                        <p className="text-[7px] font-black text-stone-400 uppercase tracking-widest">Payment Evidence</p>
                        {isPdf ? (
-                         <a 
-                           href={info.receiptImage} 
-                           target="_blank" 
-                           rel="noopener noreferrer" 
-                           className="flex items-center justify-center gap-3 w-full py-6 bg-blue-50 border-2 border-dashed border-blue-200 rounded-2xl text-blue-600 font-black uppercase text-[10px] tracking-widest hover:bg-blue-100 transition-all"
-                         >
+                         <a href={info.receiptImage} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 w-full py-6 bg-blue-50 border-2 border-dashed border-blue-200 rounded-2xl text-blue-600 font-black uppercase text-[10px] tracking-widest hover:bg-blue-100 transition-all">
                            <FileText className="w-5 h-5" />
                            📄 Download Receipt
                          </a>
