@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ChevronRight } from 'lucide-react';
+import { Sparkles, ChevronRight, Gift, Zap } from 'lucide-react';
 
 interface HomeProps {
   onEnterHall: () => void;
@@ -34,11 +34,31 @@ export const Home: React.FC<HomeProps> = ({ onEnterHall }) => {
           Thundering<br/><span className="text-red-600">Hooves</span>
         </h1>
         
-        <div className="flex items-center gap-6 mb-10">
+        <div className="flex items-center gap-6 mb-8">
            <div className="h-[1px] w-12 bg-[#d4af37]/40" />
            <p className="text-4xl md:text-6xl brush-font text-[#d4af37] drop-shadow-2xl">万马奔腾</p>
            <div className="h-[1px] w-12 bg-[#d4af37]/40" />
         </div>
+
+        {/* --- NEW GLOWING OFFER BADGE --- */}
+        <div className="relative group cursor-default mb-10 transform hover:scale-105 transition-transform duration-500">
+           {/* Blurry Glow Background */}
+           <div className="absolute inset-0 bg-red-600 blur-2xl opacity-60 animate-pulse rounded-full"></div>
+           
+           {/* The Badge */}
+           <div className="relative bg-gradient-to-r from-[#5c1a1a] via-[#8b0000] to-[#5c1a1a] border-2 border-[#d4af37] px-8 py-4 rounded-full shadow-[0_0_40px_rgba(212,175,55,0.4)] flex items-center gap-4">
+              <Gift className="w-8 h-8 text-[#d4af37] animate-bounce" />
+              <div className="flex flex-col items-center">
+                <span className="text-[#d4af37] text-[10px] font-black uppercase tracking-[0.3em] mb-1">CNY Special Promotion</span>
+                <span className="text-white text-2xl md:text-3xl font-black italic tracking-tighter drop-shadow-md">
+                  BUY 2 <span className="text-[#d4af37]">FREE 1</span>
+                </span>
+                <span className="text-white/50 text-[9px] uppercase tracking-wider font-bold mt-1">*Applicable to same-tier seats</span>
+              </div>
+              <Zap className="w-8 h-8 text-[#d4af37] animate-pulse" />
+           </div>
+        </div>
+        {/* ------------------------------- */}
 
         <div className="bg-black/40 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/10 mb-12">
           <p className="text-[#fef9c3] text-sm md:text-xl font-serif font-bold tracking-widest uppercase flex items-center gap-4">
