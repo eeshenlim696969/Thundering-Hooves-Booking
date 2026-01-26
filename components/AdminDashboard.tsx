@@ -1,12 +1,11 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { SeatData, SeatStatus, SeatTier } from '../types';
 import { Seat } from './Seat';
 import { 
   Search, Utensils, Map as MapIcon, List, Flame, Star, Sparkles, 
   TrendingUp, UserCheck, PieChart, Eye, Trash2, 
   FileSpreadsheet, Loader2, LogOut, MinusCircle, Wand2,
-  CheckCircle2, XCircle, AlertCircle
+  CheckCircle2, XCircle, AlertCircle, DollarSign, Save
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -16,6 +15,9 @@ interface AdminDashboardProps {
   onApprove?: (seat: SeatData) => Promise<void>;
   onLogout: () => void;
   onPreviewAura?: (tier: 'PLATINUM' | 'GOLD' | 'SILVER') => void;
+  // New props for Price Control
+  currentPrices?: Record<SeatTier, number>;
+  onUpdatePrices?: (newPrices: Record<SeatTier, number>) => void;
 }
 
 const SectionHeader: React.FC<{ tier: SeatTier, label: string }> = ({ tier, label }) => {
@@ -52,14 +54,17 @@ const RoundTable: React.FC<{
     <div className="relative select-none shrink-0 mx-auto transition-transform hover:scale-105 duration-500" style={{ width: containerSize, height: containerSize }}>
        <div className="absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-4 flex flex-col items-center justify-center bg-white shadow-2xl border-stone-100 z-10">
           <span className="text-[6px] font-black text-stone-400 uppercase tracking-widest leading-none mb-1">TABLE</span>
-          <span className="text-xl md:text-3xl font-serif font-black text-stone-900 leading-none">{tableId}</span>
+          {/* Fix for Table 4 display inside Admin Map */}
+          <span className="text-xl md:text-3xl font-serif font-black text-stone-900 leading-none">
+            {tableId === 4 ? '3A' : tableId}
+          </span>
        </div>
        {seats.map((seat) => {
          const angle = ((seat.seatNumber - 1) / seats.length) * 2 * Math.PI - (Math.PI / 2);
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-                data={seat} 
+                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any}
                 color={tierColor} 
                 isSelected={false} 
                 isLockedByOther={false} 
@@ -74,12 +79,35 @@ const RoundTable: React.FC<{
   );
 };
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ seats, onSelectSeat, onReset, onApprove, onLogout, onPreviewAura }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
+  seats, onSelectSeat, onReset, onApprove, onLogout, onPreviewAura, 
+  currentPrices, onUpdatePrices 
+}) => {
   const [activeView, setActiveView] = useState<'financials' | 'map' | 'manifest'>('financials');
   const [searchTerm, setSearchTerm] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [deduction, setDeduction] = useState<string>('0');
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+
+  // Price Editing State
+  const [editPrices, setEditPrices] = useState(currentPrices || {
+    [SeatTier.PLATINUM]: 0,
+    [SeatTier.GOLD]: 0,
+    [SeatTier.SILVER]: 0,
+  });
+  const [priceSaved, setPriceSaved] = useState(false);
+
+  useEffect(() => {
+    if (currentPrices) setEditPrices(currentPrices);
+  }, [currentPrices]);
+
+  const handleSavePrices = () => {
+    if (onUpdatePrices) {
+      onUpdatePrices(editPrices);
+      setPriceSaved(true);
+      setTimeout(() => setPriceSaved(false), 2000);
+    }
+  };
 
   const stats = useMemo(() => {
     const occupiedSeats = seats.filter(s => s.status !== SeatStatus.AVAILABLE);
@@ -198,7 +226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ seats, onSelectS
       setProcessingId(seat.id);
       try {
         setRemovedIds(prev => new Set([...prev, seat.id]));
-        await onReset(seat.id); // App.tsx updated onReset to use deleteBooking
+        await onReset(seat.id); 
       } catch (err) {
         setRemovedIds(prev => {
           const next = new Set(prev);
@@ -287,6 +315,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ seats, onSelectS
 
         {activeView === 'financials' && (
           <div className="space-y-6">
+            {/* --- NEW PRICE CONTROL PANEL --- */}
+            {onUpdatePrices && (
+              <div className="bg-[#d4af37]/5 border border-[#d4af37]/20 p-6 rounded-[32px] mb-6">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[#d4af37] font-black uppercase tracking-widest text-xs flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" /> Global Price Override
+                    </h3>
+                    {priceSaved && <span className="text-emerald-400 text-xs font-black uppercase tracking-widest animate-pulse">Prices Updated!</span>}
+                 </div>
+                 <div className="grid grid-cols-3 gap-4">
+                    {(Object.keys(SeatTier) as Array<keyof typeof SeatTier>).map(key => (
+                      <div key={key} className="bg-black/20 p-3 rounded-xl border border-white/5">
+                         <label className="text-[9px] text-white/40 font-black uppercase tracking-widest block mb-2">{key}</label>
+                         <input 
+                           type="number" 
+                           step="0.01"
+                           value={editPrices[SeatTier[key]]}
+                           onChange={(e) => setEditPrices({...editPrices, [SeatTier[key]]: parseFloat(e.target.value) || 0})}
+                           className="w-full bg-transparent text-white font-mono font-bold text-lg outline-none border-b border-white/10 focus:border-[#d4af37]"
+                         />
+                      </div>
+                    ))}
+                 </div>
+                 <div className="mt-4 flex justify-end">
+                    <button 
+                      onClick={handleSavePrices}
+                      className="flex items-center gap-2 px-6 py-3 bg-[#d4af37] text-stone-900 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#fff176] transition-colors"
+                    >
+                      <Save className="w-4 h-4" /> Update Prices
+                    </button>
+                 </div>
+              </div>
+            )}
+            {/* ------------------------------- */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-white/5 border border-white/10 p-8 rounded-[32px] flex flex-col gap-4">
                 <div>
@@ -394,7 +457,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ seats, onSelectS
                     const { table, seat } = parseId(s.id);
                     return (
                       <tr key={s.id} className="text-white/80 group hover:bg-white/[0.02]">
-                        <td className="px-6 py-4 font-mono font-bold text-xs">{table}-{seat}</td>
+                        <td className="px-6 py-4 font-mono font-bold text-xs">{table === '4' ? '3A' : table}-{seat}</td>
                         <td className="px-6 py-4 font-black text-xs uppercase">{s.paymentInfo?.studentName}</td>
                         <td className="px-6 py-4 font-mono text-xs opacity-50">{s.paymentInfo?.studentId}</td>
                         <td className="px-6 py-4 text-xs">{s.paymentInfo?.isVegan ? 'Vegan' : 'Standard'}</td>
