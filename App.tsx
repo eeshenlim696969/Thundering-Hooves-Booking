@@ -146,13 +146,7 @@ const RoundTable: React.FC<{
        <div className={`absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-[4px] md:border-[6px] flex flex-col items-center justify-center shadow-2xl z-10 bg-white transition-all ${isSoldOut ? 'shadow-[0_0_40px_rgba(212,175,55,0.7)]' : ''}`}
          style={{ borderColor: isSoldOut ? '#d4af37' : tierColor }}>
           <span className="text-[6px] md:text-[7px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#d4af37]">{isSoldOut ? 'SOLD OUT' : 'TABLE'}</span>
-          
-          {/* --- FIX: BIG WHITE CIRCLE TEXT --- */}
-          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>
-            {tableId === 4 ? '3A' : tableId}
-          </span>
-          {/* ---------------------------------- */}
-          
+          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>{tableId === 4 ? '3A' : tableId}</span>
        </div>
        {displaySeats.map((seat) => {
          const angle = ((seat.seatNumber - 1) / config.seatsPerTable) * 2 * Math.PI - (Math.PI / 2);
@@ -160,7 +154,9 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               data={seat} 
+               // --- FIX: Force '3A' to the seat component to trick the Tooltip ---
+               data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId) as any}} 
+               // ------------------------------------------------------------------
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
                isLockedByOther={seat.status !== SeatStatus.AVAILABLE && !mySelectedIds.includes(seat.id)} 
@@ -574,11 +570,11 @@ export const App: React.FC = () => {
                     <div key={s.id} className="flex items-center justify-between p-4 md:p-6 bg-stone-50 rounded-2xl md:rounded-3xl border border-stone-100">
                       <div className="flex items-center gap-4 md:gap-6">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-stone-900 text-white rounded-xl flex flex-col items-center justify-center font-black">
-                          {/* --- FIX: CART TEXT --- */}
+                          {/* --- FIX: CART TEXT FOR TABLE 4 --- */}
                           <span className="text-[6px] md:text-[7px] opacity-40 uppercase">
                             T-{s.tableId === 4 ? '3A' : s.tableId}
                           </span>
-                          {/* ---------------------- */}
+                          {/* ---------------------------------- */}
                           <span className="text-sm md:text-base">{s.seatNumber}</span>
                         </div>
                         <p className="font-black text-stone-800 uppercase text-sm md:text-lg">{config.tiers[s.tier].label}</p>
