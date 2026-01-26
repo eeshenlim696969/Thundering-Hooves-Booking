@@ -14,7 +14,7 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Gift
+  LogOut, Ticket, X, Zap, Trophy, Megaphone, Gift
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
@@ -58,7 +58,12 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
   }
 };
 
-// --- UPDATED PRICES HERE ---
+const DEFAULT_PRICES = {
+  [SeatTier.PLATINUM]: 25.88,
+  [SeatTier.GOLD]: 22.88,
+  [SeatTier.SILVER]: 18.88,
+};
+
 const DEFAULT_CONFIG: ConcertConfig = {
   totalTables: 14,
   section1Count: 6,
@@ -66,9 +71,9 @@ const DEFAULT_CONFIG: ConcertConfig = {
   section3Count: 4,
   seatsPerTable: 6,
   tiers: {
-    [SeatTier.PLATINUM]: { price: 25.88, color: '#b91c1c', label: 'Platinum VIP' },      
-    [SeatTier.GOLD]: { price: 22.88, color: '#d97706', label: 'Golden Tier' }, 
-    [SeatTier.SILVER]: { price: 18.88, color: '#57534e', label: 'Silver Tier' }, 
+    [SeatTier.PLATINUM]: { price: DEFAULT_PRICES[SeatTier.PLATINUM], color: '#b91c1c', label: 'Platinum VIP' },      
+    [SeatTier.GOLD]: { price: DEFAULT_PRICES[SeatTier.GOLD], color: '#d97706', label: 'Golden Tier' }, 
+    [SeatTier.SILVER]: { price: DEFAULT_PRICES[SeatTier.SILVER], color: '#57534e', label: 'Silver Tier' }, 
   },
   payment: {
     tngQrUrl: 'https://drive.google.com/thumbnail?id=17jpYGYSTDCZmvWYFTCZgSj1ND_jJa4r9&sz=w1000',
@@ -167,7 +172,7 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               // FIX: Force '3A' to the seat component to trick the Tooltip (using 'as any' to avoid TS error)
+               // FIX: Force '3A' to the seat component
                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any} 
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
@@ -190,7 +195,32 @@ export const App: React.FC = () => {
     return id;
   });
 
-  const [config] = useState<ConcertConfig>(DEFAULT_CONFIG);
+  // --- DYNAMIC PRICE STATE ---
+  // Initialize from LocalStorage if available, else use defaults
+  const [tierPrices, setTierPrices] = useState<Record<SeatTier, number>>(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('thundering_prices');
+      if (saved) return JSON.parse(saved);
+    }
+    return DEFAULT_PRICES;
+  });
+
+  // Re-generate config whenever prices change
+  const config = useMemo(() => ({
+    ...DEFAULT_CONFIG,
+    tiers: {
+      [SeatTier.PLATINUM]: { ...DEFAULT_CONFIG.tiers[SeatTier.PLATINUM], price: tierPrices[SeatTier.PLATINUM] },
+      [SeatTier.GOLD]: { ...DEFAULT_CONFIG.tiers[SeatTier.GOLD], price: tierPrices[SeatTier.GOLD] },
+      [SeatTier.SILVER]: { ...DEFAULT_CONFIG.tiers[SeatTier.SILVER], price: tierPrices[SeatTier.SILVER] },
+    }
+  }), [tierPrices]);
+
+  const handleUpdatePrices = (newPrices: Record<SeatTier, number>) => {
+    setTierPrices(newPrices);
+    localStorage.setItem('thundering_prices', JSON.stringify(newPrices));
+  };
+  // ---------------------------
+
   const [seats, setSeats] = useState<SeatData[]>([]);
   const [mySelectedIds, setMySelectedIds] = useState<string[]>([]);
   const seatsRef = useRef<SeatData[]>([]);
@@ -280,6 +310,7 @@ export const App: React.FC = () => {
     return map;
   }, [seats]);
 
+  // Sync Logic
   useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToSeats((cloudSeats) => {
@@ -289,6 +320,7 @@ export const App: React.FC = () => {
            for (let t = 1; t <= config.totalTables; t++) {
              const tier = t <= config.section1Count ? SeatTier.PLATINUM : t <= (config.section1Count + config.section2Count) ? SeatTier.GOLD : SeatTier.SILVER;
              for (let s = 1; s <= config.seatsPerTable; s++) {
+               // USE DYNAMIC PRICE FROM CONFIG HERE
                initialSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
              }
            }
@@ -296,27 +328,31 @@ export const App: React.FC = () => {
 
         return initialSeats.map(localSeat => {
           const cloudData = cloudSeats[localSeat.id];
+          // Always update price from config even if seat exists
+          const currentPrice = config.tiers[localSeat.tier].price;
+          
           if (cloudData) {
             const rawStatus = String(cloudData.status || 'AVAILABLE').toUpperCase();
             let mappedStatus = rawStatus as SeatStatus;
             return {
               ...localSeat,
+              price: currentPrice, // FORCE UPDATE PRICE
               status: mappedStatus,
               lockedBy: cloudData.lockedBy || undefined,
               lockedAt: cloudData.lockedAt || undefined,
               paymentInfo: cloudData.paymentInfo || undefined
             };
           }
-          return localSeat;
+          return { ...localSeat, price: currentPrice };
         });
       });
       setLoading(false);
     });
     return () => unsubscribe(); 
-  }, [config]);
+  }, [config]); // Re-run when config changes (prices update)
 
 
-  // --- CRITICAL FIX 1: SESSION RECOVERY & TIMER SYNC ---
+  // Session Recovery
   useEffect(() => {
     if (seats.length > 0 && currentUserId) {
        const recoveredSeats = seats.filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId);
@@ -336,7 +372,6 @@ export const App: React.FC = () => {
     }
   }, [seats, currentUserId, view]);
 
-  // --- CRITICAL FIX 2: AUTO-RELEASE ON TIMEOUT ---
   const handleCheckoutCleanup = useCallback(async () => {
     setIsTimerActive(false);
     try {
@@ -423,28 +458,22 @@ export const App: React.FC = () => {
       alert("Hall is full! No available seats for a random pick.");
       return;
     }
-
     const duration = 6000; 
     const intervalTime = 500;
     const iterations = duration / intervalTime;
     let count = 0;
-
     const timer = setInterval(() => {
       const randomSeat = available[Math.floor(Math.random() * available.length)];
       setSpinningSeatId(randomSeat.id);
       const el = document.getElementById(`seat-${randomSeat.id}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       count++;
       if (count >= iterations) {
         clearInterval(timer);
         const luckySeat = available[Math.floor(Math.random() * available.length)];
         setSpinningSeatId(luckySeat.id);
         const finalEl = document.getElementById(`seat-${luckySeat.id}`);
-        if (finalEl) {
-          finalEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (finalEl) finalEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => {
           setSpinningSeatId(null);
           setMySelectedIds([luckySeat.id]);
@@ -467,20 +496,17 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- CART ESTIMATOR LOGIC ---
+  // --- CART ESTIMATION (Per Tier Rule) ---
   const cartTotalEstimation = useMemo(() => {
     if (mySelectedSeats.length === 0) return 0;
-    
-    // Simple estimation for display (Buy 2 Free 1 per tier)
-    // We group by tier to estimate the free ones
+    // Group by tier
     const seatsByTier: Record<string, number[]> = {};
     let total = 0;
-
     mySelectedSeats.forEach(s => {
       if (!seatsByTier[s.tier]) seatsByTier[s.tier] = [];
       seatsByTier[s.tier].push(s.price);
     });
-
+    // Calculate logic
     Object.values(seatsByTier).forEach(prices => {
       // Sort desc
       prices.sort((a, b) => b - a);
@@ -493,7 +519,6 @@ export const App: React.FC = () => {
     });
     return total;
   }, [mySelectedSeats]);
-  // ----------------------------
 
   if (loading) return <div className="h-full w-full flex items-center justify-center bg-[#0d0101] text-[#d4af37] font-black text-xl md:text-2xl uppercase tracking-widest px-6 text-center"><RefreshCw className="animate-spin mr-4 shrink-0" /> Synchronizing Hall...</div>;
 
@@ -644,23 +669,26 @@ export const App: React.FC = () => {
                           <span className="text-sm md:text-base">{s.seatNumber}</span>
                         </div>
                         <p className="font-black text-stone-800 uppercase text-sm md:text-lg">{config.tiers[s.tier].label}</p>
+                        <p className="text-stone-400 font-bold ml-auto">RM{s.price.toFixed(2)}</p>
                       </div>
                       <button onClick={() => handleSeatClick(s.id)} className="text-red-500 hover:scale-110"><Trash2 className="w-5 h-5" /></button>
                     </div>
                   ))}
                   
                   {/* --- VISIBLE PROMO TEXT IN CART --- */}
-                  <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col gap-2">
-                     <div className="flex items-center gap-2">
-                       <Gift className="w-5 h-5 text-red-500" />
-                       <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
-                         Buy 2 Free 1 Applied (Per Tier)
+                  {mySelectedSeats.length > 0 && (
+                    <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col gap-2">
+                       <div className="flex items-center gap-2">
+                         <Gift className="w-5 h-5 text-red-500" />
+                         <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
+                           Buy 2 Free 1 Applied (Same Tier)
+                         </p>
+                       </div>
+                       <p className="text-right font-serif font-black text-xl text-stone-900">
+                         Est. Total: RM {cartTotalEstimation.toFixed(2)}
                        </p>
-                     </div>
-                     <p className="text-right font-serif font-black text-xl text-stone-900">
-                       Est. Total: RM {cartTotalEstimation.toFixed(2)}
-                     </p>
-                  </div>
+                    </div>
+                  )}
                   {/* ------------------------- */}
 
                   <button onClick={() => handleProceedToCheckout()} disabled={mySelectedSeats.length === 0} className="w-full py-4 md:py-6 bg-[#d4af37] text-[#5c1a1a] rounded-[24px] md:rounded-3xl font-black text-lg md:text-xl uppercase shadow-xl hover:scale-[1.02] transition-all disabled:bg-stone-200">Checkout</button>
@@ -683,6 +711,9 @@ export const App: React.FC = () => {
               }}
               onLogout={() => { setIsAdmin(false); setView('home'); }}
               onPreviewAura={(tier) => triggerAuraResult(tier)}
+              // Pass the state and setter for dynamic prices
+              currentPrices={tierPrices}
+              onUpdatePrices={handleUpdatePrices}
             />
           </div>
         )}
@@ -754,7 +785,6 @@ export const App: React.FC = () => {
           // Group by Tier
           const seatsByTier: Record<string, typeof seatPrices> = {};
           seatPrices.forEach(s => {
-             // TS safe key assignment
              const key = String(s.tier);
              if (!seatsByTier[key]) seatsByTier[key] = [];
              seatsByTier[key].push(s);
@@ -770,7 +800,6 @@ export const App: React.FC = () => {
              group.forEach((item, index) => {
                 // Buy 2 Free 1: You pay for #1, #2. #3 is free.
                 // Index 0, 1 (Pay). Index 2 (Free).
-                // (2 + 1) % 3 === 0.
                 if ((index + 1) % 3 !== 0) {
                    runningTotal += item.finalPrice;
                 }
