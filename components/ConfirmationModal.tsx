@@ -62,6 +62,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   const totalPrice = seats.reduce((sum, seat) => {
     const d = details[seat.id];
+    // Only apply discount if isMember is true (which is only possible for students now)
     return sum + (d?.isMember ? seat.price - MEMBER_DISCOUNT_AMOUNT : seat.price);
   }, 0);
 
@@ -130,7 +131,10 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                   {/* --- 3-WAY CATEGORY TOGGLE --- */}
                   <div className="bg-stone-100 p-1 rounded-xl flex flex-wrap gap-1 w-full">
                      <button 
-                       onClick={() => updateDetail(seat.id, 'category', 'VITROXIAN')}
+                       onClick={() => {
+                         updateDetail(seat.id, 'category', 'VITROXIAN');
+                         updateDetail(seat.id, 'isMember', false); // Reset member status when changing category
+                       }}
                        className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${category === 'VITROXIAN' ? 'bg-white shadow-sm text-purple-700 ring-1 ring-black/5' : 'text-stone-400 hover:text-stone-600'}`}
                      >
                        <Briefcase className="w-3 h-3" /> Vitroxian
@@ -142,7 +146,10 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                        <GraduationCap className="w-3 h-3" /> Student
                      </button>
                      <button 
-                       onClick={() => updateDetail(seat.id, 'category', 'OUTSIDER')}
+                       onClick={() => {
+                         updateDetail(seat.id, 'category', 'OUTSIDER');
+                         updateDetail(seat.id, 'isMember', false); // Reset member status when changing category
+                       }}
                        className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${category === 'OUTSIDER' ? 'bg-white shadow-sm text-amber-600 ring-1 ring-black/5' : 'text-stone-400 hover:text-stone-600'}`}
                      >
                        <Car className="w-3 h-3" /> Outsider
@@ -176,7 +183,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                   </div>
 
                   <div className="flex gap-4 pt-2">
-                    <button onClick={() => updateDetail(seat.id, 'isMember', !d.isMember)} className={`flex-1 p-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${d.isMember ? 'bg-amber-50 border-[#d4af37] text-amber-700' : 'bg-white border-stone-100 text-stone-300'}`}>Club Member</button>
+                    {/* ONLY SHOW CLUB MEMBER BUTTON IF CATEGORY IS STUDENT */}
+                    {category === 'STUDENT' && (
+                      <button 
+                        onClick={() => updateDetail(seat.id, 'isMember', !d.isMember)} 
+                        className={`flex-1 p-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${d.isMember ? 'bg-amber-50 border-[#d4af37] text-amber-700' : 'bg-white border-stone-100 text-stone-300'}`}
+                      >
+                        Club Member
+                      </button>
+                    )}
+                    
                     <button onClick={() => updateDetail(seat.id, 'isVegan', !d.isVegan)} className={`flex-1 p-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${d.isVegan ? 'bg-green-50 border-green-600 text-green-700' : 'bg-white border-stone-100 text-stone-300'}`}>Vegan Meal</button>
                   </div>
                 </div>
