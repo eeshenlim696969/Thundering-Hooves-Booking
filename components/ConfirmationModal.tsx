@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SeatData, SeatDetail } from '../types';
+import { SeatData, SeatDetail, VisitorCategory } from '../types';
 import { X, Ticket, User, Clock, Trash2, Loader2, Users, CreditCard, Car, GraduationCap, Briefcase, Mail, Phone } from 'lucide-react';
 
 interface ConfirmationModalProps {
@@ -20,15 +20,27 @@ const formatTime = (seconds: number) => {
 };
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, timeLeft, onClose, onConfirm, onRemoveSeat, seats }) => {
-  const [details, setDetails] = useState<Record<string, any>>({});
+  // FIXED: Define the state with the correct type
+  const [details, setDetails] = useState<Record<string, SeatDetail>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) { setIsSubmitting(false); return; }
     setDetails(prev => {
-      const next: Record<string, any> = {};
+      const next: Record<string, SeatDetail> = {};
       seats.forEach(seat => {
-        next[seat.id] = prev[seat.id] || { category: 'STUDENT', studentName: '', studentId: '', isMember: false, isVegan: false };
+        // FIXED: Initialize with all necessary fields to avoid crashes
+        next[seat.id] = prev[seat.id] || { 
+          category: 'STUDENT', 
+          studentName: '', 
+          studentId: '', 
+          isMember: false, 
+          isVegan: false,
+          email: '',
+          phone: '',
+          icNumber: '',
+          carPlate: ''
+        };
       });
       return next;
     });
@@ -36,7 +48,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
   if (!isOpen) return null;
 
-  const updateDetail = (id: string, field: string, value: any) => {
+  const updateDetail = (id: string, field: keyof SeatDetail, value: any) => {
     setDetails(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   };
 
@@ -45,14 +57,25 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
     return sum + (d?.isMember ? seat.price - MEMBER_DISCOUNT_AMOUNT : seat.price);
   }, 0);
 
-  const isFormValid = seats.every(seat => {
+  // FIXED: Safer validation logic
+  const isFormValid = seats.length > 0 && seats.every(seat => {
     const d = details[seat.id];
-    if (!d || d.studentName.trim().length < 3) return false;
+    if (!d || !d.studentName || d.studentName.trim().length < 3) return false;
+    
     if (d.category === 'OUTSIDER') {
-      return (d.icNumber?.length || 0) > 5 && (d.carPlate?.trim().length || 0) > 1 && d.email?.includes('@') && (d.phone?.length || 0) > 7;
+      return (d.icNumber?.length || 0) > 5 && 
+             (d.carPlate?.trim().length || 0) > 1 && 
+             (d.email?.includes('@')) && 
+             (d.phone?.length || 0) > 7;
     }
     return (d.studentId?.trim().length || 0) > 1;
   });
+
+  const handleConfirmAction = () => {
+    if (!isFormValid || isSubmitting) return;
+    setIsSubmitting(true);
+    onConfirm(details); // No longer errors because types match
+  };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-md animate-fade-in">
@@ -72,14 +95,14 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
         <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 bg-stone-50/30 grow">
           {seats.map((seat, index) => {
-            const d = details[seat.id] || {};
+            const d = details[seat.id] || { category: 'STUDENT', studentName: '' };
             return (
               <div key={seat.id} className="bg-white p-6 rounded-[32px] border border-stone-200 shadow-sm space-y-6 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-2 h-full bg-[#5c1a1a]" />
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <span className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center text-[10px] font-black">{index + 1}</span>
-                    <h4 className="font-black text-stone-900 uppercase">Table {seat.tableId === 4 ? '3A' : seat.tableId} / Seat {seat.seatNumber}</h4>
+                    <h4 className="font-black text-stone-900 uppercase text-sm">Table {seat.tableId === 4 ? '3A' : seat.tableId} / Seat {seat.seatNumber}</h4>
                   </div>
                   <button onClick={() => onRemoveSeat?.(seat.id)} className="p-2 text-stone-300 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
                 </div>
@@ -107,25 +130,25 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
                     <>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><CreditCard className="w-3 h-3" /> IC Number</label>
-                        <input type="text" placeholder="IC Number" value={d.icNumber} onChange={(e) => updateDetail(seat.id, 'icNumber', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                        <input type="text" placeholder="IC Number" value={d.icNumber || ''} onChange={(e) => updateDetail(seat.id, 'icNumber', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Mail className="w-3 h-3" /> Email</label>
-                        <input type="email" placeholder="Email" value={d.email} onChange={(e) => updateDetail(seat.id, 'email', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                        <input type="email" placeholder="Email" value={d.email || ''} onChange={(e) => updateDetail(seat.id, 'email', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Phone className="w-3 h-3" /> Phone</label>
-                        <input type="tel" placeholder="Phone" value={d.phone} onChange={(e) => updateDetail(seat.id, 'phone', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                        <input type="tel" placeholder="Phone" value={d.phone || ''} onChange={(e) => updateDetail(seat.id, 'phone', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
                       </div>
                       <div className="space-y-1 md:col-span-2">
                         <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Car className="w-3 h-3" /> Car Plate</label>
-                        <input type="text" placeholder="PAA 1234" value={d.carPlate} onChange={(e) => updateDetail(seat.id, 'carPlate', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                        <input type="text" placeholder="PAA 1234" value={d.carPlate || ''} onChange={(e) => updateDetail(seat.id, 'carPlate', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
                       </div>
                     </>
                   ) : (
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Users className="w-3 h-3" /> {d.category === 'VITROXIAN' ? 'Staff ID' : 'Student ID'}</label>
-                      <input type="text" placeholder="ID Number" value={d.studentId} onChange={(e) => updateDetail(seat.id, 'studentId', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                      <input type="text" placeholder="ID Number" value={d.studentId || ''} onChange={(e) => updateDetail(seat.id, 'studentId', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
                     </div>
                   )}
                 </div>
@@ -141,18 +164,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
           })}
         </div>
 
-        <div className="p-8 bg-[#fafafa] border-t border-stone-100 shrink-0 space-y-4">
-           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-             <div>
-               <span className="font-black text-stone-400 uppercase text-[10px] tracking-[0.3em]">TOTAL DUE</span>
-               <div className="text-3xl font-black text-[#5c1a1a] font-mono leading-none">RM {totalPrice.toFixed(2)}</div>
-             </div>
-             <button onClick={() => onConfirm(details as any)} disabled={!isFormValid || timeLeft === 0 || isSubmitting}
-               className="w-full md:w-auto px-10 py-5 bg-[#d4af37] disabled:bg-stone-200 text-[#5c1a1a] font-black uppercase tracking-[0.2em] rounded-[24px] shadow-2xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95"
-             >
-               {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Confirm & Pay'}
-             </button>
+        <div className="p-8 bg-[#fafafa] border-t border-stone-100 shrink-0 flex flex-col md:flex-row items-center justify-between gap-6">
+           <div>
+             <span className="font-black text-stone-400 uppercase text-[10px] tracking-[0.3em]">TOTAL DUE</span>
+             <div className="text-3xl font-black text-[#5c1a1a] font-mono leading-none">RM {totalPrice.toFixed(2)}</div>
            </div>
+           <button onClick={handleConfirmAction} disabled={!isFormValid || timeLeft === 0 || isSubmitting}
+             className="w-full md:w-auto px-10 py-5 bg-[#d4af37] disabled:bg-stone-200 text-[#5c1a1a] font-black uppercase tracking-[0.2em] rounded-[24px] shadow-2xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95"
+           >
+             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm & Proceed'}
+           </button>
         </div>
       </div>
     </div>
