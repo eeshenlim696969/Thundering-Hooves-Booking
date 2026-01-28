@@ -58,7 +58,6 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
   }
 };
 
-// --- UPDATED PRICES (Gold 10.88, Silver 8.88) ---
 const DEFAULT_PRICES = {
   [SeatTier.PLATINUM]: 0, 
   [SeatTier.GOLD]: 10.88,
@@ -67,7 +66,6 @@ const DEFAULT_PRICES = {
 
 const BASE_CONFIG: ConcertConfig = {
   totalTables: 14,
-  // We keep the layout count (6, 4, 4) to preserve the grid structure
   section1Count: 6, 
   section2Count: 4, 
   section3Count: 4,
@@ -107,7 +105,6 @@ const Stage = () => (
 );
 
 const SectionHeader: React.FC<{ tier: SeatTier, label: string }> = ({ tier, label }) => {
-  // Always use GOLD styling for Platinum visual override
   const visualTier = label.includes("GOLD") ? SeatTier.GOLD : tier;
 
   const icon = visualTier === SeatTier.PLATINUM ? <Flame className="w-5 h-5 md:w-8 md:h-8 fill-current" /> : 
@@ -146,7 +143,6 @@ const RoundTable: React.FC<{
   const center = containerSize / 2;
   const baseRadius = isMobile ? 60 : 80; 
   
-  // Force visual color to GOLD if it's the top section (tables 1-6)
   const tierColor = (tier === SeatTier.PLATINUM || tier === SeatTier.GOLD) 
     ? config.tiers[SeatTier.GOLD].color 
     : config.tiers[SeatTier.SILVER].color;
@@ -237,7 +233,6 @@ export const App: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(LOCK_DURATION_SECONDS); 
   const [isTimerActive, setIsTimerActive] = useState(false);
 
-  // Gacha Logic
   const [showGachaModal, setShowGachaModal] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinningAura, setSpinningAura] = useState<AuraType>('SILVER');
@@ -313,8 +308,6 @@ export const App: React.FC = () => {
         let initialSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (initialSeats.length === 0) {
            for (let t = 1; t <= config.totalTables; t++) {
-             // Logic: T1-10 = GOLD, T11-14 = SILVER
-             // Even though we keep section1Count for layout, we force the DATA tier here.
              let tier = SeatTier.SILVER;
              if (t <= 10) tier = SeatTier.GOLD; 
              
@@ -591,7 +584,7 @@ export const App: React.FC = () => {
               
               <Stage />
 
-              {/* SECTION 1: VISUALLY LOOKS LIKE "GOLD" (Formerly Platinum) - 3 COLS */}
+              {/* SECTION 1: TOP 6 TABLES (VISUALLY "TOP TIER", NOW GOLD) */}
               <div className="w-full flex flex-col items-center">
                 <SectionHeader tier={SeatTier.GOLD} label={`GOLD - RM ${config.tiers[SeatTier.GOLD].price.toFixed(2)}`} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-14 w-full px-4">
@@ -601,9 +594,8 @@ export const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* SECTION 2: THE REST OF THE GOLD TABLES - 4 COLS */}
-              <div className="w-full flex flex-col items-center">
-                <SectionHeader tier={SeatTier.GOLD} label={`GOLD - RM ${config.tiers[SeatTier.GOLD].price.toFixed(2)}`} />
+              {/* SECTION 2: TABLES 7-10 (REMAINDER OF GOLD) */}
+              <div className="w-full flex flex-col items-center mt-12">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-14 w-full px-4">
                   {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => {
                     const tId = parseInt(id);
@@ -614,7 +606,7 @@ export const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* SECTION 3: SILVER TABLES - 4 COLS */}
+              {/* SECTION 3: SILVER TABLES */}
               <div className="w-full flex flex-col items-center">
                 <SectionHeader tier={SeatTier.SILVER} label={`SILVER - RM ${config.tiers[SeatTier.SILVER].price.toFixed(2)}`} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-14 w-full px-4">
