@@ -18,11 +18,11 @@ export type VisitorCategory = 'VITROXIAN' | 'STUDENT' | 'OUTSIDER';
 export interface SeatDetail {
   category: VisitorCategory;
   studentName: string;
-  email: string;      
-  phone: string;      
   studentId?: string; 
   icNumber?: string;  
   carPlate?: string;  
+  email?: string;     
+  phone?: string;     
   isMember: boolean;
   isVegan: boolean;
   refNo?: string;
@@ -38,14 +38,7 @@ export interface SeatData {
   price: number;
   lockedBy?: string;
   lockedAt?: number;
-  paymentInfo?: SeatDetail; 
-}
-
-export interface PaymentConfig {
-  tngQrUrl: string;
-  bankAccountName: string;
-  bankAccountNumber: string;
-  bankName: string;
+  paymentInfo?: SeatDetail;
 }
 
 export interface ConcertConfig {
@@ -54,8 +47,12 @@ export interface ConcertConfig {
   section2Count: number;
   section3Count: number;
   seatsPerTable: number;
-  driveFolderLink?: string;
-  payment: PaymentConfig;
+  payment: {
+    tngQrUrl: string;
+    bankAccountName: string;
+    bankAccountNumber: string;
+    bankName: string;
+  };
   tiers: {
     [key in SeatTier]: {
       price: number;
