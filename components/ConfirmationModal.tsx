@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
-import { SeatData, SeatStatus, SeatTier, SeatDetail } from '../types';
-import { X, Ticket, ShieldCheck, ArrowRight, Leaf, User, Fingerprint, Clock, Trash2, ChevronLeft, Loader2, Users } from 'lucide-react';
+import { SeatData, SeatDetail, VisitorCategory } from '../types';
+import { X, Ticket, User, Clock, Trash2, Loader2, Users, CreditCard, Car, GraduationCap, Briefcase } from 'lucide-react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -9,7 +8,6 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: (details: Record<string, SeatDetail>) => void;
   onRemoveSeat?: (id: string) => void;
-  onModifySelection?: () => void;
   seats: SeatData[];
 }
 
@@ -21,7 +19,9 @@ const formatTime = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, timeLeft, onClose, onConfirm, onRemoveSeat, seats }) => {
+export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ 
+  isOpen, timeLeft, onClose, onConfirm, onRemoveSeat, seats 
+}) => {
   const [details, setDetails] = useState<Record<string, SeatDetail>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,8 +34,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
     setDetails(prev => {
       const next: Record<string, SeatDetail> = {};
       seats.forEach(seat => {
-        // Default studentId is empty, which will force the user to pick from the dropdown
-        next[seat.id] = prev[seat.id] || { studentName: '', studentId: '', isMember: false, isVegan: false };
+        // Default to ViTrox Student
+        next[seat.id] = prev[seat.id] || { 
+          category: 'STUDENT', 
+          studentName: '', 
+          studentId: '', 
+          icNumber: '',
+          carPlate: '',
+          isMember: false, 
+          isVegan: false 
+        };
       });
       return next;
     });
@@ -59,8 +67,17 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
   const isFormValid = seats.length > 0 && seats.every(seat => {
     const d = details[seat.id];
-    // Form is valid if name is long enough and a category is selected from the dropdown
-    return d?.studentName.trim().length >= 3 && d?.studentId.length > 0;
+    if (!d) return false;
+    
+    const hasName = d.studentName.trim().length >= 3;
+    
+    if (d.category === 'OUTSIDER') {
+      // Outsider needs IC + Car Plate
+      return hasName && d.icNumber && d.icNumber.length >= 6 && d.carPlate && d.carPlate.length >= 2;
+    } else {
+      // Student & Vitroxian need an ID
+      return hasName && d.studentId && d.studentId.length >= 2;
+    }
   });
 
   const handleConfirmAction = async () => {
@@ -87,47 +104,75 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
             <Ticket className="w-6 h-6 text-[#d4af37]" />
           </div>
           <div>
-            <h3 className="text-2xl font-serif font-black text-stone-900 tracking-tight">Seat Details</h3>
-            <p className="text-[10px] text-stone-400 uppercase tracking-[0.3em] font-black mt-2">Registration Required</p>
+            <h3 className="text-2xl font-serif font-black text-stone-900 tracking-tight">Guest Registration</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-[0.3em] font-black mt-2">Please fill in details</p>
           </div>
         </div>
 
         <div className="p-8 overflow-y-auto custom-scrollbar grow space-y-8 bg-stone-50/30">
           <div className="grid gap-6">
             {seats.map((seat, index) => {
-              const d = details[seat.id] || { studentName: '', studentId: '', isMember: false, isVegan: false };
+              const d = details[seat.id] || { category: 'STUDENT', studentName: '', studentId: '', icNumber: '', carPlate: '', isMember: false, isVegan: false };
+              const category = d.category;
+
               return (
                 <div key={seat.id} className="bg-white p-6 rounded-[32px] border border-stone-200 shadow-sm space-y-6 relative overflow-hidden group">
                   <div className="absolute top-0 left-0 w-2 h-full bg-[#5c1a1a]" />
+                  
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <span className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center text-[10px] font-black">{index + 1}</span>
-                      {/* UPDATED: Manual change to Table 3A */}
-                      <h4 className="font-black text-stone-900 uppercase">Table 3A / Seat {seat.seatNumber}</h4>
+                      <h4 className="font-black text-stone-900 uppercase">Table {seat.tableId === 4 ? '3A' : seat.tableId} / Seat {seat.seatNumber}</h4>
                     </div>
                     <button onClick={() => onRemoveSeat?.(seat.id)} className="p-2 text-stone-300 hover:text-red-500 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                   </div>
 
+                  {/* --- 3-WAY CATEGORY TOGGLE --- */}
+                  <div className="bg-stone-100 p-1 rounded-xl flex flex-wrap gap-1 w-full">
+                     <button 
+                       onClick={() => updateDetail(seat.id, 'category', 'VITROXIAN')}
+                       className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${category === 'VITROXIAN' ? 'bg-white shadow-sm text-purple-700 ring-1 ring-black/5' : 'text-stone-400 hover:text-stone-600'}`}
+                     >
+                       <Briefcase className="w-3 h-3" /> Vitroxian
+                     </button>
+                     <button 
+                       onClick={() => updateDetail(seat.id, 'category', 'STUDENT')}
+                       className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${category === 'STUDENT' ? 'bg-white shadow-sm text-blue-700 ring-1 ring-black/5' : 'text-stone-400 hover:text-stone-600'}`}
+                     >
+                       <GraduationCap className="w-3 h-3" /> Student
+                     </button>
+                     <button 
+                       onClick={() => updateDetail(seat.id, 'category', 'OUTSIDER')}
+                       className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${category === 'OUTSIDER' ? 'bg-white shadow-sm text-amber-600 ring-1 ring-black/5' : 'text-stone-400 hover:text-stone-600'}`}
+                     >
+                       <Car className="w-3 h-3" /> Outsider
+                     </button>
+                  </div>
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><User className="w-3 h-3" /> Full Name</label>
-                      <input type="text" placeholder="Attendee Name" value={d.studentName} onChange={(e) => updateDetail(seat.id, 'studentName', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none" />
+                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><User className="w-3 h-3" /> Name</label>
+                      <input type="text" placeholder="Full Name" value={d.studentName} onChange={(e) => updateDetail(seat.id, 'studentName', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
                     </div>
                     
-                    {/* UPDATED: Dropdown Selection for ID/Category */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Users className="w-3 h-3" /> Attendee Type</label>
-                      <select 
-                        value={d.studentId} 
-                        onChange={(e) => updateDetail(seat.id, 'studentId', e.target.value)} 
-                        className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none appearance-none cursor-pointer hover:border-amber-300 transition-colors"
-                      >
-                        <option value="">-- Select Category --</option>
-                        <option value="Outsider">Outsider</option>
-                        <option value="Vitroxian">Vitroxian</option>
-                        <option value="VitroxStudent">ViTrox Student</option>
-                      </select>
-                    </div>
+                    {/* DYNAMIC FIELDS */}
+                    {category === 'OUTSIDER' ? (
+                      <>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><CreditCard className="w-3 h-3" /> IC Number</label>
+                          <input type="text" placeholder="e.g. 990101-07-1234" value={d.icNumber} onChange={(e) => updateDetail(seat.id, 'icNumber', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                          <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Car className="w-3 h-3" /> Car Plate</label>
+                          <input type="text" placeholder="e.g. PAA 1234" value={d.carPlate} onChange={(e) => updateDetail(seat.id, 'carPlate', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><Users className="w-3 h-3" /> {category === 'VITROXIAN' ? 'Staff / Vitroxian ID' : 'Student ID'}</label>
+                        <input type="text" placeholder={category === 'VITROXIAN' ? "e.g. V12345" : "e.g. 2200123"} value={d.studentId} onChange={(e) => updateDetail(seat.id, 'studentId', e.target.value)} className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-[#d4af37]" />
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-4 pt-2">
@@ -154,7 +199,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
                {isSubmitting ? (
                  <>Processing... <Loader2 className="w-6 h-6 animate-spin" /></>
                ) : (
-                 <>Proceed to Checkout <ArrowRight className="w-6 h-6" /></>
+                 <>Confirm & Proceed</>
                )}
              </button>
            </div>
