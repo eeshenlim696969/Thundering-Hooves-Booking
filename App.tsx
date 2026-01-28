@@ -14,7 +14,7 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Gift
+  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
@@ -82,6 +82,118 @@ const BASE_CONFIG: ConcertConfig = {
     bankName: 'Maybank',
   }
 };
+
+// --- MINIGAME COMPONENTS ---
+const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(15);
+  const [angpaos, setAngpaos] = useState<{id: number, left: number, speed: number}[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+
+  // Game Loop
+  useEffect(() => {
+    if (gameOver) return;
+    
+    // Spawn angpaos
+    const spawnInterval = setInterval(() => {
+      setAngpaos(prev => [
+        ...prev, 
+        { 
+          id: Date.now(), 
+          left: Math.random() * 90, // Random horizontal position
+          speed: 2 + Math.random() * 3 // Random speed
+        }
+      ]);
+    }, 500);
+
+    // Timer
+    const timerInterval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setGameOver(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(spawnInterval);
+      clearInterval(timerInterval);
+    };
+  }, [gameOver]);
+
+  const catchAngpao = (id: number) => {
+    setAngpaos(prev => prev.filter(a => a.id !== id));
+    setScore(s => s + 10);
+    // Sound effect could go here
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100001] bg-black/80 flex flex-col items-center justify-center overflow-hidden cny-pattern">
+      {/* Game Header */}
+      <div className="absolute top-10 flex gap-8 text-white font-black text-2xl uppercase tracking-widest z-10 bg-black/50 p-4 rounded-2xl backdrop-blur-md border border-white/20">
+        <div className="text-yellow-400">Score: {score}</div>
+        <div className={timeLeft < 5 ? "text-red-500 animate-pulse" : "text-white"}>Time: {timeLeft}s</div>
+      </div>
+
+      {/* Close Button */}
+      <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 z-20">
+        <X className="text-white w-8 h-8" />
+      </button>
+
+      {/* Falling Angpaos */}
+      {!gameOver && angpaos.map(angpao => (
+        <div 
+          key={angpao.id}
+          onClick={() => catchAngpao(angpao.id)}
+          className="absolute cursor-pointer animate-fall hover:scale-110 active:scale-95 transition-transform"
+          style={{ 
+            left: `${angpao.left}%`, 
+            animationDuration: `${angpao.speed}s`,
+            top: '-50px' // Start above screen
+          }}
+        >
+          <div className="w-16 h-20 bg-red-600 rounded-lg border-2 border-yellow-400 flex items-center justify-center shadow-lg relative overflow-hidden">
+             <div className="text-2xl">🧧</div>
+             <div className="absolute -top-4 -right-4 w-8 h-8 bg-yellow-400 rotate-45 opacity-50"></div>
+          </div>
+        </div>
+      ))}
+
+      {/* Game Over Screen */}
+      {gameOver && (
+        <div className="z-20 bg-[#fff7ed] p-10 rounded-[40px] text-center border-4 border-[#d4af37] animate-bounce-in shadow-[0_0_100px_rgba(212,175,55,0.5)] max-w-sm mx-4">
+           <Trophy className="w-20 h-20 text-[#d4af37] mx-auto mb-4" />
+           <h2 className="text-4xl font-black text-[#8b0000] mb-2 uppercase font-serif">Prosperity!</h2>
+           <p className="text-stone-600 font-bold uppercase tracking-widest mb-6">You collected</p>
+           <div className="text-6xl font-black text-[#d4af37] mb-8 drop-shadow-sm">{score}</div>
+           <p className="text-xs text-stone-400 font-bold mb-8 italic">"May your wealth overflow like the rain!"</p>
+           <button 
+             onClick={onClose}
+             className="w-full py-4 bg-[#8b0000] text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-lg"
+           >
+             Collect Fortune
+           </button>
+        </div>
+      )}
+      
+      {/* CSS for Falling Animation - Injected here for simplicity */}
+      <style>{`
+        @keyframes fall {
+          0% { transform: translateY(0) rotate(0deg); }
+          100% { transform: translateY(110vh) rotate(360deg); }
+        }
+        .animate-fall {
+          animation-name: fall;
+          animation-timing-function: linear;
+          animation-fill-mode: forwards;
+        }
+      `}</style>
+    </div>
+  );
+};
+// ----------------------------
 
 const Stage = () => (
   <div className="w-full max-w-4xl mx-auto mb-20 relative px-4 mt-8">
@@ -233,7 +345,9 @@ export const App: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(LOCK_DURATION_SECONDS); 
   const [isTimerActive, setIsTimerActive] = useState(false);
 
+  // Gacha & Game State
   const [showGachaModal, setShowGachaModal] = useState(false);
+  const [showGameModal, setShowGameModal] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinningAura, setSpinningAura] = useState<AuraType>('SILVER');
   const [auraResult, setAuraResult] = useState<AuraType | null>(null);
@@ -505,6 +619,9 @@ export const App: React.FC = () => {
         <Navbar currentView={view} onNavigate={handleNavigate} isAdmin={isAdmin} />
       )}
 
+      {/* MINIGAME OVERLAY */}
+      {showGameModal && <AngpaoRainGame onClose={() => setShowGameModal(false)} />}
+
       {showGachaModal && (
         <div 
           onClick={() => !isSpinning && setShowGachaModal(false)}
@@ -698,6 +815,14 @@ export const App: React.FC = () => {
             </button>
 
             <button 
+              onClick={() => setShowGameModal(true)}
+              className="group whitespace-nowrap px-4 py-3 bg-gradient-to-r from-red-600 via-orange-500 to-red-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.1em] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-2 border-white/20 backdrop-blur-[10px]"
+            >
+              <Gamepad2 className="w-4 h-4" />
+              <span>Catch Angpao</span>
+            </button>
+
+            <button 
               onClick={handleTestLuck}
               className="group whitespace-nowrap px-4 py-3 bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.1em] shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-2 border-white/10 backdrop-blur-[10px]"
               style={{ background: 'rgba(147,51,234,0.8)' }}
@@ -729,6 +854,7 @@ export const App: React.FC = () => {
         onRemoveSeat={removeSeatFromCheckout}
         onConfirm={(d: Record<string, SeatDetail>) => { 
           setPendingDetails(d); 
+          // Reverted to simple calculation (No Promo)
           const calcTotal = Object.entries(d).reduce((sum, [id, det]) => {
             const seat = seats.find(st => st.id === id);
             return sum + (det.isMember ? (seat?.price || 0) - MEMBER_DISCOUNT_AMOUNT : (seat?.price || 0));
