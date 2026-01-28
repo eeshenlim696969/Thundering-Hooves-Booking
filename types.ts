@@ -8,24 +8,29 @@ export enum SeatStatus {
 }
 
 export enum SeatTier {
-  PLATINUM = 'PLATINUM', 
+  PLATINUM = 'PLATINUM', // Kept for legacy compatibility
   GOLD = 'GOLD',
   SILVER = 'SILVER',
 }
 
+// --- NEW: Visitor Categories ---
 export type VisitorCategory = 'VITROXIAN' | 'STUDENT' | 'OUTSIDER';
 
 export interface SeatDetail {
   category: VisitorCategory;
   studentName: string;
-  studentId?: string; 
-  icNumber?: string;  
-  carPlate?: string;  
-  email?: string;     
-  phone?: string;     
+  
+  // Dynamic IDs based on category
+  studentId?: string;        // For Student or Vitroxian
+  icNumber?: string;         // For Outsider
+  carPlate?: string;         // For Outsider
+  
   isMember: boolean;
   isVegan: boolean;
+  
+  // Payment/System fields
   refNo?: string;
+  receiptImage?: string;
   date?: string;
 }
 
@@ -38,7 +43,14 @@ export interface SeatData {
   price: number;
   lockedBy?: string;
   lockedAt?: number;
-  paymentInfo?: SeatDetail;
+  paymentInfo?: SeatDetail; // Linked to the interface above
+}
+
+export interface PaymentConfig {
+  tngQrUrl: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankName: string;
 }
 
 export interface ConcertConfig {
@@ -47,12 +59,8 @@ export interface ConcertConfig {
   section2Count: number;
   section3Count: number;
   seatsPerTable: number;
-  payment: {
-    tngQrUrl: string;
-    bankAccountName: string;
-    bankAccountNumber: string;
-    bankName: string;
-  };
+  driveFolderLink?: string;
+  payment: PaymentConfig;
   tiers: {
     [key in SeatTier]: {
       price: number;
@@ -61,3 +69,6 @@ export interface ConcertConfig {
     }
   };
 }
+
+export type AspectRatio = "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
+export type ImageSize = "1K" | "2K" | "4K";
