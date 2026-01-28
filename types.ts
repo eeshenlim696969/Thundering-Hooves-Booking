@@ -1,4 +1,3 @@
-
 export enum SeatStatus {
   AVAILABLE = 'AVAILABLE',
   SELECTED = 'SELECTED',
@@ -14,11 +13,20 @@ export enum SeatTier {
   SILVER = 'SILVER',
 }
 
+// --- UPDATED: 3 Categories ---
+export type VisitorCategory = 'VITROXIAN' | 'STUDENT' | 'OUTSIDER';
+
 export interface SeatDetail {
+  category: VisitorCategory;
   studentName: string;
-  studentId: string;
+  studentId?: string;        // Used for Student ID or Vitroxian ID
+  icNumber?: string;         // For outsiders
+  carPlate?: string;         // For outsiders
   isMember: boolean;
   isVegan: boolean;
+  
+  refNo?: string;
+  date?: string;
 }
 
 export interface SeatData {
@@ -30,15 +38,7 @@ export interface SeatData {
   price: number;
   lockedBy?: string;
   lockedAt?: number;
-  paymentInfo?: {
-    refNo: string;
-    receiptImage?: string; // Base64 encoded string
-    studentName: string;
-    studentId: string;
-    date: string;
-    isMember: boolean;
-    isVegan: boolean;
-  };
+  paymentInfo?: SeatDetail;
 }
 
 export interface PaymentConfig {
@@ -64,6 +64,3 @@ export interface ConcertConfig {
     }
   };
 }
-
-export type AspectRatio = "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
-export type ImageSize = "1K" | "2K" | "4K";
