@@ -19,18 +19,14 @@ export type VisitorCategory = 'VITROXIAN' | 'STUDENT' | 'OUTSIDER';
 export interface SeatDetail {
   category: VisitorCategory;
   studentName: string;
-  
-  // Dynamic IDs based on category
-  studentId?: string;        // For Student or Vitroxian
-  icNumber?: string;         // For Outsider
-  carPlate?: string;         // For Outsider
-  
+  email: string;      // Mandatory
+  phone: string;      // Mandatory
+  studentId?: string; 
+  icNumber?: string;  
+  carPlate?: string;  
   isMember: boolean;
   isVegan: boolean;
-  
-  // Payment/System fields
   refNo?: string;
-  receiptImage?: string;
   date?: string;
 }
 
