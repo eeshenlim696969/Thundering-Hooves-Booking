@@ -24,6 +24,8 @@ export interface SeatDetail {
   studentId?: string;        // For Student or Vitroxian
   icNumber?: string;         // For Outsider
   carPlate?: string;         // For Outsider
+  phoneNumber?: string;      // NEW: For Outsider
+  email?: string;            // NEW: For Outsider
   
   isMember: boolean;
   isVegan: boolean;
