@@ -8,19 +8,18 @@ export enum SeatStatus {
 }
 
 export enum SeatTier {
-  PLATINUM = 'PLATINUM', // Kept for legacy compatibility
+  PLATINUM = 'PLATINUM', 
   GOLD = 'GOLD',
   SILVER = 'SILVER',
 }
 
-// --- NEW: Visitor Categories ---
 export type VisitorCategory = 'VITROXIAN' | 'STUDENT' | 'OUTSIDER';
 
 export interface SeatDetail {
   category: VisitorCategory;
   studentName: string;
-  email: string;      // Mandatory
-  phone: string;      // Mandatory
+  email: string;      
+  phone: string;      
   studentId?: string; 
   icNumber?: string;  
   carPlate?: string;  
@@ -39,7 +38,7 @@ export interface SeatData {
   price: number;
   lockedBy?: string;
   lockedAt?: number;
-  paymentInfo?: SeatDetail; // Linked to the interface above
+  paymentInfo?: SeatDetail; 
 }
 
 export interface PaymentConfig {
@@ -65,6 +64,3 @@ export interface ConcertConfig {
     }
   };
 }
-
-export type AspectRatio = "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
-export type ImageSize = "1K" | "2K" | "4K";
