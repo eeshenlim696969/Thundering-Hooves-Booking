@@ -163,6 +163,7 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
+               // FIX: Force '3A' to the seat component to trick the Tooltip
                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any} 
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
