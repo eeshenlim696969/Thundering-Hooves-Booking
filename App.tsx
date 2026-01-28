@@ -58,20 +58,22 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
   }
 };
 
+// --- UPDATED PRICES (Gold 10.88, Silver 8.88) ---
 const DEFAULT_PRICES = {
-  [SeatTier.PLATINUM]: 25.88,
-  [SeatTier.GOLD]: 22.88,
-  [SeatTier.SILVER]: 18.88,
+  [SeatTier.PLATINUM]: 0, // Unused
+  [SeatTier.GOLD]: 10.88,
+  [SeatTier.SILVER]: 8.88,
 };
 
-const DEFAULT_CONFIG: ConcertConfig = {
+const BASE_CONFIG: ConcertConfig = {
   totalTables: 14,
-  section1Count: 6,
-  section2Count: 4,
+  // CONFIG CHANGE: 0 Platinum, 10 Gold, 4 Silver
+  section1Count: 0, 
+  section2Count: 10, 
   section3Count: 4,
   seatsPerTable: 6,
   tiers: {
-    [SeatTier.PLATINUM]: { price: DEFAULT_PRICES[SeatTier.PLATINUM], color: '#b91c1c', label: 'Platinum VIP' },      
+    [SeatTier.PLATINUM]: { price: 0, color: '#b91c1c', label: 'Platinum VIP' },      
     [SeatTier.GOLD]: { price: DEFAULT_PRICES[SeatTier.GOLD], color: '#d97706', label: 'Golden Tier' }, 
     [SeatTier.SILVER]: { price: DEFAULT_PRICES[SeatTier.SILVER], color: '#57534e', label: 'Silver Tier' }, 
   },
@@ -82,17 +84,6 @@ const DEFAULT_CONFIG: ConcertConfig = {
     bankName: 'Maybank',
   }
 };
-
-// --- PROMO BANNER ---
-const PromoBanner = () => (
-  <div className="w-full bg-gradient-to-r from-red-700 via-red-500 to-red-700 text-[#fff7ed] py-3 px-4 shadow-[0_10px_20px_rgba(220,38,38,0.5)] animate-pulse flex items-center justify-center gap-3 z-50 sticky top-[70px] md:top-[80px] border-y-2 border-[#d4af37]">
-    <Sparkles className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
-    <span className="text-xs md:text-lg font-black uppercase tracking-widest text-center drop-shadow-md">
-      CNY OFFER: <span className="text-yellow-300 underline decoration-wavy decoration-yellow-500">BUY 2 FREE 1</span> (SAME TIER ONLY)! 🧧
-    </span>
-    <Sparkles className="w-5 h-5 md:w-6 md:h-6 fill-yellow-400 text-yellow-900 animate-bounce" />
-  </div>
-);
 
 const Stage = () => (
   <div className="w-full max-w-4xl mx-auto mb-20 relative px-4 mt-8">
@@ -172,7 +163,6 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               // FIX: Force '3A' to the seat component
                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any} 
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
@@ -195,8 +185,6 @@ export const App: React.FC = () => {
     return id;
   });
 
-  // --- DYNAMIC PRICE STATE ---
-  // Initialize from LocalStorage if available, else use defaults
   const [tierPrices, setTierPrices] = useState<Record<SeatTier, number>>(() => {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('thundering_prices');
@@ -205,21 +193,21 @@ export const App: React.FC = () => {
     return DEFAULT_PRICES;
   });
 
-  // Re-generate config whenever prices change
   const config = useMemo(() => ({
-    ...DEFAULT_CONFIG,
+    ...BASE_CONFIG,
     tiers: {
-      [SeatTier.PLATINUM]: { ...DEFAULT_CONFIG.tiers[SeatTier.PLATINUM], price: tierPrices[SeatTier.PLATINUM] },
-      [SeatTier.GOLD]: { ...DEFAULT_CONFIG.tiers[SeatTier.GOLD], price: tierPrices[SeatTier.GOLD] },
-      [SeatTier.SILVER]: { ...DEFAULT_CONFIG.tiers[SeatTier.SILVER], price: tierPrices[SeatTier.SILVER] },
+      [SeatTier.PLATINUM]: { ...BASE_CONFIG.tiers[SeatTier.PLATINUM], price: tierPrices[SeatTier.PLATINUM] },
+      [SeatTier.GOLD]: { ...BASE_CONFIG.tiers[SeatTier.GOLD], price: tierPrices[SeatTier.GOLD] },
+      [SeatTier.SILVER]: { ...BASE_CONFIG.tiers[SeatTier.SILVER], price: tierPrices[SeatTier.SILVER] },
     }
   }), [tierPrices]);
 
   const handleUpdatePrices = (newPrices: Record<SeatTier, number>) => {
     setTierPrices(newPrices);
-    localStorage.setItem('thundering_prices', JSON.stringify(newPrices));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('thundering_prices', JSON.stringify(newPrices));
+    }
   };
-  // ---------------------------
 
   const [seats, setSeats] = useState<SeatData[]>([]);
   const [mySelectedIds, setMySelectedIds] = useState<string[]>([]);
@@ -310,7 +298,6 @@ export const App: React.FC = () => {
     return map;
   }, [seats]);
 
-  // Sync Logic
   useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToSeats((cloudSeats) => {
@@ -318,9 +305,9 @@ export const App: React.FC = () => {
         let initialSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (initialSeats.length === 0) {
            for (let t = 1; t <= config.totalTables; t++) {
+             // LOGIC CHANGE: 0-10 = Gold (since section1Count is 0, section2 is 10)
              const tier = t <= config.section1Count ? SeatTier.PLATINUM : t <= (config.section1Count + config.section2Count) ? SeatTier.GOLD : SeatTier.SILVER;
              for (let s = 1; s <= config.seatsPerTable; s++) {
-               // USE DYNAMIC PRICE FROM CONFIG HERE
                initialSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
              }
            }
@@ -328,7 +315,6 @@ export const App: React.FC = () => {
 
         return initialSeats.map(localSeat => {
           const cloudData = cloudSeats[localSeat.id];
-          // Always update price from config even if seat exists
           const currentPrice = config.tiers[localSeat.tier].price;
           
           if (cloudData) {
@@ -336,7 +322,7 @@ export const App: React.FC = () => {
             let mappedStatus = rawStatus as SeatStatus;
             return {
               ...localSeat,
-              price: currentPrice, // FORCE UPDATE PRICE
+              price: currentPrice,
               status: mappedStatus,
               lockedBy: cloudData.lockedBy || undefined,
               lockedAt: cloudData.lockedAt || undefined,
@@ -349,10 +335,8 @@ export const App: React.FC = () => {
       setLoading(false);
     });
     return () => unsubscribe(); 
-  }, [config]); // Re-run when config changes (prices update)
+  }, [config]);
 
-
-  // Session Recovery
   useEffect(() => {
     if (seats.length > 0 && currentUserId) {
        const recoveredSeats = seats.filter(s => s.status === SeatStatus.CHECKOUT && s.lockedBy === currentUserId);
@@ -496,28 +480,9 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- CART ESTIMATION (Per Tier Rule) ---
+  // --- SIMPLE CART TOTAL (NO PROMO) ---
   const cartTotalEstimation = useMemo(() => {
-    if (mySelectedSeats.length === 0) return 0;
-    // Group by tier
-    const seatsByTier: Record<string, number[]> = {};
-    let total = 0;
-    mySelectedSeats.forEach(s => {
-      if (!seatsByTier[s.tier]) seatsByTier[s.tier] = [];
-      seatsByTier[s.tier].push(s.price);
-    });
-    // Calculate logic
-    Object.values(seatsByTier).forEach(prices => {
-      // Sort desc
-      prices.sort((a, b) => b - a);
-      prices.forEach((price, idx) => {
-        // Buy 2 Free 1 logic: 3rd, 6th, 9th are free
-        if ((idx + 1) % 3 !== 0) {
-          total += price;
-        }
-      });
-    });
-    return total;
+    return mySelectedSeats.reduce((acc, s) => acc + s.price, 0);
   }, [mySelectedSeats]);
 
   if (loading) return <div className="h-full w-full flex items-center justify-center bg-[#0d0101] text-[#d4af37] font-black text-xl md:text-2xl uppercase tracking-widest px-6 text-center"><RefreshCw className="animate-spin mr-4 shrink-0" /> Synchronizing Hall...</div>;
@@ -530,9 +495,7 @@ export const App: React.FC = () => {
         <Navbar currentView={view} onNavigate={handleNavigate} isAdmin={isAdmin} />
       )}
 
-      {/* --- PROMO BANNER --- */}
-      {!showAnnouncement && view === 'hall' && <PromoBanner />}
-      {/* ------------------- */}
+      {/* PROMO BANNER REMOVED AS REQUESTED */}
 
       {showGachaModal && (
         <div 
@@ -613,21 +576,15 @@ export const App: React.FC = () => {
               
               <Stage />
 
-              <div className="w-full flex flex-col items-center">
-                <SectionHeader tier={SeatTier.PLATINUM} label={`PLATINUM - RM ${config.tiers[SeatTier.PLATINUM].price.toFixed(2)}`} />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-14 w-full px-4">
-                  {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => parseInt(id) <= config.section1Count).map(([id, tableSeats]) => (
-                    <RoundTable key={id} tableId={parseInt(id)} seats={tableSeats} tier={SeatTier.PLATINUM} config={config} mySelectedIds={mySelectedIds} onSeatClick={handleSeatClick} isAdmin={isAdmin} spinningSeatId={spinningSeatId} />
-                  ))}
-                </div>
-              </div>
+              {/* REMOVED PLATINUM HEADER, ONLY GOLD & SILVER */}
 
               <div className="w-full flex flex-col items-center">
                 <SectionHeader tier={SeatTier.GOLD} label={`GOLD - RM ${config.tiers[SeatTier.GOLD].price.toFixed(2)}`} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-14 w-full px-4">
                   {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => {
                     const tId = parseInt(id);
-                    return tId > config.section1Count && tId <= (config.section1Count + config.section2Count);
+                    // Gold now includes 1-10
+                    return tId <= (config.section1Count + config.section2Count);
                   }).map(([id, tableSeats]) => (
                     <RoundTable key={id} tableId={parseInt(id)} seats={tableSeats} tier={SeatTier.GOLD} config={config} mySelectedIds={mySelectedIds} onSeatClick={handleSeatClick} isAdmin={isAdmin} spinningSeatId={spinningSeatId} />
                   ))}
@@ -639,6 +596,7 @@ export const App: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-14 w-full px-4">
                   {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => {
                     const tId = parseInt(id);
+                    // Silver is everything else
                     return tId > (config.section1Count + config.section2Count);
                   }).map(([id, tableSeats]) => (
                     <RoundTable key={id} tableId={parseInt(id)} seats={tableSeats} tier={SeatTier.SILVER} config={config} mySelectedIds={mySelectedIds} onSeatClick={handleSeatClick} isAdmin={isAdmin} spinningSeatId={spinningSeatId} />
@@ -662,7 +620,6 @@ export const App: React.FC = () => {
                     <div key={s.id} className="flex items-center justify-between p-4 md:p-6 bg-stone-50 rounded-2xl md:rounded-3xl border border-stone-100">
                       <div className="flex items-center gap-4 md:gap-6">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-stone-900 text-white rounded-xl flex flex-col items-center justify-center font-black">
-                          {/* FIX: CART TEXT FOR TABLE 4 */}
                           <span className="text-[6px] md:text-[7px] opacity-40 uppercase">
                             T-{s.tableId === 4 ? '3A' : s.tableId}
                           </span>
@@ -675,21 +632,13 @@ export const App: React.FC = () => {
                     </div>
                   ))}
                   
-                  {/* --- VISIBLE PROMO TEXT IN CART --- */}
                   {mySelectedSeats.length > 0 && (
-                    <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col gap-2">
-                       <div className="flex items-center gap-2">
-                         <Gift className="w-5 h-5 text-red-500" />
-                         <p className="text-red-700 font-bold text-xs md:text-sm uppercase tracking-wider">
-                           Buy 2 Free 1 Applied (Same Tier)
-                         </p>
-                       </div>
+                    <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 flex flex-col gap-2">
                        <p className="text-right font-serif font-black text-xl text-stone-900">
-                         Est. Total: RM {cartTotalEstimation.toFixed(2)}
+                         Total: RM {cartTotalEstimation.toFixed(2)}
                        </p>
                     </div>
                   )}
-                  {/* ------------------------- */}
 
                   <button onClick={() => handleProceedToCheckout()} disabled={mySelectedSeats.length === 0} className="w-full py-4 md:py-6 bg-[#d4af37] text-[#5c1a1a] rounded-[24px] md:rounded-3xl font-black text-lg md:text-xl uppercase shadow-xl hover:scale-[1.02] transition-all disabled:bg-stone-200">Checkout</button>
               </div>
@@ -711,7 +660,6 @@ export const App: React.FC = () => {
               }}
               onLogout={() => { setIsAdmin(false); setView('home'); }}
               onPreviewAura={(tier) => triggerAuraResult(tier)}
-              // Pass the state and setter for dynamic prices
               currentPrices={tierPrices}
               onUpdatePrices={handleUpdatePrices}
             />
@@ -722,11 +670,9 @@ export const App: React.FC = () => {
       {/* Hall Action Dock (Outside of main scrollable area) */}
       {view === 'hall' && !showAnnouncement && (
         <>
-          {/* Bottom Left: Fun Actions Container */}
           <div 
             className="fixed bottom-6 left-6 z-[9999] flex flex-col gap-3 pointer-events-auto"
           >
-            {/* Destiny Pick Button */}
             <button 
               onClick={handleRandomPick}
               className="group whitespace-nowrap px-4 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-stone-900 rounded-2xl font-black uppercase text-[10px] tracking-[0.1em] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-2 border-white/30 backdrop-blur-[10px]"
@@ -736,7 +682,6 @@ export const App: React.FC = () => {
               <span>Destiny Pick</span>
             </button>
 
-            {/* Reveal Aura Button */}
             <button 
               onClick={handleTestLuck}
               className="group whitespace-nowrap px-4 py-3 bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.1em] shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-2 border-white/10 backdrop-blur-[10px]"
@@ -747,8 +692,7 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Bottom Right: Booking Action Container */}
-          {mySelectedIds.length > 0 && (
+          {mySelectedSeats.length > 0 && (
             <div className="fixed bottom-6 right-6 z-[9999] pointer-events-auto">
               <button 
                 onClick={() => setView('cart')}
@@ -770,46 +714,14 @@ export const App: React.FC = () => {
         onRemoveSeat={removeSeatFromCheckout}
         onConfirm={(d: Record<string, SeatDetail>) => { 
           setPendingDetails(d); 
-          
-          // --- CONFIRMATION MODAL LOGIC: BUY 2 FREE 1 (PER TIER) ---
-          const seatPrices = Object.entries(d).map(([id, det]) => {
-             const seat = seats.find(st => st.id === id);
-             const basePrice = seat?.price || 0;
-             return {
-                id,
-                tier: seat?.tier || SeatTier.SILVER,
-                finalPrice: det.isMember ? basePrice - MEMBER_DISCOUNT_AMOUNT : basePrice
-             };
-          });
-
-          // Group by Tier
-          const seatsByTier: Record<string, typeof seatPrices> = {};
-          seatPrices.forEach(s => {
-             const key = String(s.tier);
-             if (!seatsByTier[key]) seatsByTier[key] = [];
-             seatsByTier[key].push(s);
-          });
-
-          let runningTotal = 0;
-
-          // Apply logic per tier group
-          Object.values(seatsByTier).forEach(group => {
-             // Sort highest to lowest (usually equal in a tier, but safe for member discounts)
-             group.sort((a, b) => b.finalPrice - a.finalPrice);
-             
-             group.forEach((item, index) => {
-                // Buy 2 Free 1: You pay for #1, #2. #3 is free.
-                // Index 0, 1 (Pay). Index 2 (Free).
-                if ((index + 1) % 3 !== 0) {
-                   runningTotal += item.finalPrice;
-                }
-             });
-          });
-
-          setTotalPrice(runningTotal); 
+          // Reverted to simple calculation (No Promo)
+          const calcTotal = Object.entries(d).reduce((sum, [id, det]) => {
+            const seat = seats.find(st => st.id === id);
+            return sum + (det.isMember ? (seat?.price || 0) - MEMBER_DISCOUNT_AMOUNT : (seat?.price || 0));
+          }, 0);
+          setTotalPrice(calcTotal); 
           setConfirmOpen(false); 
           setPaymentOpen(true); 
-          // ----------------------------------------------------
         }} 
       />
       
