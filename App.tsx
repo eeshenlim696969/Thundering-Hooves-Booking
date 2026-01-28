@@ -14,11 +14,11 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Megaphone, Gift
+  LogOut, Ticket, X, Zap, Trophy, Gift
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
-const LOCK_DURATION_SECONDS = 300; // 5 Minutes
+const LOCK_DURATION_SECONDS = 300; 
 
 type AuraType = 'PLATINUM' | 'GOLD' | 'SILVER';
 
@@ -60,20 +60,20 @@ const AURA_CONFIG: Record<AuraType, AuraData> = {
 
 // --- UPDATED PRICES (Gold 10.88, Silver 8.88) ---
 const DEFAULT_PRICES = {
-  [SeatTier.PLATINUM]: 0, // Unused
+  [SeatTier.PLATINUM]: 0, 
   [SeatTier.GOLD]: 10.88,
   [SeatTier.SILVER]: 8.88,
 };
 
 const BASE_CONFIG: ConcertConfig = {
   totalTables: 14,
-  // CONFIG CHANGE: 0 Platinum, 10 Gold, 4 Silver
-  section1Count: 0, 
-  section2Count: 10, 
+  // We keep the layout count (6, 4, 4) to preserve the grid structure
+  section1Count: 6, 
+  section2Count: 4, 
   section3Count: 4,
   seatsPerTable: 6,
   tiers: {
-    [SeatTier.PLATINUM]: { price: 0, color: '#b91c1c', label: 'Platinum VIP' },      
+    [SeatTier.PLATINUM]: { price: 0, color: '#b91c1c', label: 'Platinum' },      
     [SeatTier.GOLD]: { price: DEFAULT_PRICES[SeatTier.GOLD], color: '#d97706', label: 'Golden Tier' }, 
     [SeatTier.SILVER]: { price: DEFAULT_PRICES[SeatTier.SILVER], color: '#57534e', label: 'Silver Tier' }, 
   },
@@ -107,12 +107,15 @@ const Stage = () => (
 );
 
 const SectionHeader: React.FC<{ tier: SeatTier, label: string }> = ({ tier, label }) => {
-  const icon = tier === SeatTier.PLATINUM ? <Flame className="w-5 h-5 md:w-8 md:h-8 fill-current" /> : 
-               tier === SeatTier.GOLD ? <Star className="w-5 h-5 md:w-8 md:h-8 fill-current" /> : 
+  // Always use GOLD styling for Platinum visual override
+  const visualTier = label.includes("GOLD") ? SeatTier.GOLD : tier;
+
+  const icon = visualTier === SeatTier.PLATINUM ? <Flame className="w-5 h-5 md:w-8 md:h-8 fill-current" /> : 
+               visualTier === SeatTier.GOLD ? <Star className="w-5 h-5 md:w-8 md:h-8 fill-current" /> : 
                <Sparkles className="w-5 h-5 md:w-8 md:h-8" />;
                
-  const gradient = tier === SeatTier.PLATINUM ? "from-[#8b0000] via-red-600 to-[#8b0000] text-white" :
-                   tier === SeatTier.GOLD ? "from-[#d4af37] via-[#fef9c3] to-[#d4af37] text-[#5c1a1a]" :
+  const gradient = visualTier === SeatTier.PLATINUM ? "from-[#8b0000] via-red-600 to-[#8b0000] text-white" :
+                   visualTier === SeatTier.GOLD ? "from-[#d4af37] via-[#fef9c3] to-[#d4af37] text-[#5c1a1a]" :
                    "from-[#57534e] via-stone-300 to-[#57534e] text-white";
 
   return (
@@ -142,7 +145,12 @@ const RoundTable: React.FC<{
   const containerSize = isMobile ? 180 : 240; 
   const center = containerSize / 2;
   const baseRadius = isMobile ? 60 : 80; 
-  const tierColor = config.tiers[tier]?.color || '#57534e';
+  
+  // Force visual color to GOLD if it's the top section (tables 1-6)
+  const tierColor = (tier === SeatTier.PLATINUM || tier === SeatTier.GOLD) 
+    ? config.tiers[SeatTier.GOLD].color 
+    : config.tiers[SeatTier.SILVER].color;
+
   const displaySeats = useMemo(() => [...seats].sort((a, b) => a.seatNumber - b.seatNumber).slice(0, config.seatsPerTable), [seats, config.seatsPerTable]);
   const isSoldOut = displaySeats.length > 0 && displaySeats.every(s => s.status === SeatStatus.SOLD);
 
@@ -163,7 +171,6 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               // FIX: Force '3A' to the seat component to trick the Tooltip
                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any} 
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
@@ -306,10 +313,20 @@ export const App: React.FC = () => {
         let initialSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (initialSeats.length === 0) {
            for (let t = 1; t <= config.totalTables; t++) {
-             // LOGIC CHANGE: 0-10 = Gold (since section1Count is 0, section2 is 10)
-             const tier = t <= config.section1Count ? SeatTier.PLATINUM : t <= (config.section1Count + config.section2Count) ? SeatTier.GOLD : SeatTier.SILVER;
+             // Logic: T1-10 = GOLD, T11-14 = SILVER
+             // Even though we keep section1Count for layout, we force the DATA tier here.
+             let tier = SeatTier.SILVER;
+             if (t <= 10) tier = SeatTier.GOLD; 
+             
              for (let s = 1; s <= config.seatsPerTable; s++) {
-               initialSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
+               initialSeats.push({ 
+                 id: `t${t}-s${s}`, 
+                 tableId: t, 
+                 seatNumber: s, 
+                 status: SeatStatus.AVAILABLE, 
+                 tier, 
+                 price: config.tiers[tier].price 
+                });
              }
            }
         }
@@ -481,7 +498,6 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- SIMPLE CART TOTAL (NO PROMO) ---
   const cartTotalEstimation = useMemo(() => {
     return mySelectedSeats.reduce((acc, s) => acc + s.price, 0);
   }, [mySelectedSeats]);
@@ -495,8 +511,6 @@ export const App: React.FC = () => {
       {!showAnnouncement && (
         <Navbar currentView={view} onNavigate={handleNavigate} isAdmin={isAdmin} />
       )}
-
-      {/* PROMO BANNER REMOVED AS REQUESTED */}
 
       {showGachaModal && (
         <div 
@@ -577,28 +591,36 @@ export const App: React.FC = () => {
               
               <Stage />
 
-              {/* REMOVED PLATINUM HEADER, ONLY GOLD & SILVER */}
+              {/* SECTION 1: VISUALLY LOOKS LIKE "GOLD" (Formerly Platinum) - 3 COLS */}
+              <div className="w-full flex flex-col items-center">
+                <SectionHeader tier={SeatTier.GOLD} label={`GOLD - RM ${config.tiers[SeatTier.GOLD].price.toFixed(2)}`} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-14 w-full px-4">
+                  {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => parseInt(id) <= 6).map(([id, tableSeats]) => (
+                    <RoundTable key={id} tableId={parseInt(id)} seats={tableSeats} tier={SeatTier.GOLD} config={config} mySelectedIds={mySelectedIds} onSeatClick={handleSeatClick} isAdmin={isAdmin} spinningSeatId={spinningSeatId} />
+                  ))}
+                </div>
+              </div>
 
+              {/* SECTION 2: THE REST OF THE GOLD TABLES - 4 COLS */}
               <div className="w-full flex flex-col items-center">
                 <SectionHeader tier={SeatTier.GOLD} label={`GOLD - RM ${config.tiers[SeatTier.GOLD].price.toFixed(2)}`} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-14 w-full px-4">
                   {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => {
                     const tId = parseInt(id);
-                    // Gold now includes 1-10
-                    return tId <= (config.section1Count + config.section2Count);
+                    return tId > 6 && tId <= 10;
                   }).map(([id, tableSeats]) => (
                     <RoundTable key={id} tableId={parseInt(id)} seats={tableSeats} tier={SeatTier.GOLD} config={config} mySelectedIds={mySelectedIds} onSeatClick={handleSeatClick} isAdmin={isAdmin} spinningSeatId={spinningSeatId} />
                   ))}
                 </div>
               </div>
 
+              {/* SECTION 3: SILVER TABLES - 4 COLS */}
               <div className="w-full flex flex-col items-center">
                 <SectionHeader tier={SeatTier.SILVER} label={`SILVER - RM ${config.tiers[SeatTier.SILVER].price.toFixed(2)}`} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-14 w-full px-4">
                   {(Object.entries(seatsByTable) as [string, SeatData[]][]).filter(([id]) => {
                     const tId = parseInt(id);
-                    // Silver is everything else
-                    return tId > (config.section1Count + config.section2Count);
+                    return tId > 10;
                   }).map(([id, tableSeats]) => (
                     <RoundTable key={id} tableId={parseInt(id)} seats={tableSeats} tier={SeatTier.SILVER} config={config} mySelectedIds={mySelectedIds} onSeatClick={handleSeatClick} isAdmin={isAdmin} spinningSeatId={spinningSeatId} />
                   ))}
@@ -715,7 +737,6 @@ export const App: React.FC = () => {
         onRemoveSeat={removeSeatFromCheckout}
         onConfirm={(d: Record<string, SeatDetail>) => { 
           setPendingDetails(d); 
-          // Reverted to simple calculation (No Promo)
           const calcTotal = Object.entries(d).reduce((sum, [id, det]) => {
             const seat = seats.find(st => st.id === id);
             return sum + (det.isMember ? (seat?.price || 0) - MEMBER_DISCOUNT_AMOUNT : (seat?.price || 0));
