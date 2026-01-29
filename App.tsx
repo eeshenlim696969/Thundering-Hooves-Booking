@@ -59,6 +59,7 @@ const BASE_CONFIG: ConcertConfig = {
   }
 };
 
+// --- MINIGAME COMPONENTS ---
 const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(15);
@@ -85,33 +86,47 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const fetchScores = async () => {
     try {
       const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(5));
-      const snap = await getDocs(q);
-      setLeaderboard(snap.docs.map(doc => doc.data() as {name: string, score: number}));
-    } catch (e) { console.error(e); }
+      const querySnapshot = await getDocs(q);
+      const scores = querySnapshot.docs.map(doc => doc.data() as {name: string, score: number});
+      setLeaderboard(scores);
+    } catch (e) { console.error("Error fetching leaderboard: ", e); }
   };
 
   const handleSaveScore = async () => {
     if (!playerName.trim()) return;
     setIsSaving(true);
     try {
-      await addDoc(collection(db, "leaderboard"), { name: playerName, score: score, createdAt: serverTimestamp() });
+      await addDoc(collection(db, "leaderboard"), {
+        name: playerName,
+        score: score,
+        createdAt: serverTimestamp()
+      });
       await fetchScores();
       setGameState('LEADERBOARD');
     } catch (e) { alert("Failed to save score."); }
     setIsSaving(false);
   };
 
+  const catchAngpao = (id: number) => {
+    setAngpaos(prev => prev.filter(a => a.id !== id));
+    setScore(s => s + 10);
+  };
+
   return (
     <div className="fixed inset-0 z-[100001] bg-black/90 flex flex-col items-center justify-center overflow-hidden cny-pattern backdrop-blur-md">
-      <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 z-20 text-white"><X className="w-8 h-8" /></button>
+      <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 z-20 text-white">
+        <X className="w-8 h-8" />
+      </button>
+
       {gameState === 'START' && (
         <div className="text-center animate-fade-in space-y-6">
           <div className="text-8xl mb-4 animate-bounce">🧧</div>
           <h2 className="text-5xl font-black text-white uppercase italic tracking-tighter">Angpao Rain</h2>
           <button onClick={() => { setGameState('PLAYING'); setScore(0); setTimeLeft(15); }} className="px-12 py-5 bg-[#d4af37] text-stone-900 rounded-full font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-110 transition-transform">Start Game</button>
-          <button onClick={() => { fetchScores(); setGameState('LEADERBOARD'); }} className="block mx-auto text-white/40 text-xs font-black uppercase tracking-widest hover:text-[#d4af37]">Leaderboard</button>
+          <button onClick={() => { fetchScores(); setGameState('LEADERBOARD'); }} className="block mx-auto text-white/40 text-xs font-black uppercase hover:text-[#d4af37]">Leaderboard</button>
         </div>
       )}
+
       {gameState === 'PLAYING' && (
         <>
           <div className="absolute top-10 flex gap-8 text-white font-black text-2xl z-10 bg-red-600/20 px-6 py-3 rounded-full border border-red-500/50 backdrop-blur-xl">
@@ -119,20 +134,25 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <div className={timeLeft < 5 ? "text-red-500 animate-pulse" : "text-white"}>⏱️ {timeLeft}s</div>
           </div>
           {angpaos.map(angpao => (
-            <div key={angpao.id} onClick={() => { setScore(s => s + 10); setAngpaos(prev => prev.filter(a => a.id !== angpao.id)); }} className="absolute cursor-pointer animate-fall" style={{ left: `${angpao.left}%`, animationDuration: `${angpao.speed}s`, top: '-100px' }}>
+            <div key={angpao.id} onClick={() => catchAngpao(angpao.id)} className="absolute cursor-pointer animate-fall"
+              style={{ left: `${angpao.left}%`, animationDuration: `${angpao.speed}s`, top: '-100px' }}>
               <div className="w-16 h-20 bg-red-600 rounded-lg border-2 border-yellow-400 flex items-center justify-center shadow-2xl text-3xl">🧧</div>
             </div>
           ))}
         </>
       )}
+
       {gameState === 'GAMEOVER' && (
         <div className="z-20 bg-[#fff7ed] p-10 rounded-[40px] text-center border-4 border-[#d4af37] animate-bounce-in shadow-2xl max-w-sm mx-4">
            <h2 className="text-3xl font-black text-[#8b0000] mb-2 uppercase font-serif">Time's Up!</h2>
            <div className="text-6xl font-black text-[#d4af37] mb-8">{score}</div>
            <input type="text" placeholder="YOUR NAME" maxLength={10} value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full p-4 bg-stone-100 border-2 rounded-2xl text-center font-black uppercase mb-4 focus:border-[#d4af37] outline-none" />
-           <button onClick={handleSaveScore} disabled={isSaving || !playerName.trim()} className="w-full py-4 bg-[#8b0000] text-white rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" /> : 'Submit Score'}</button>
+           <button onClick={handleSaveScore} disabled={isSaving || !playerName.trim()} className="w-full py-4 bg-[#8b0000] text-white rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2">
+             {isSaving ? <Loader2 className="animate-spin" /> : 'Submit Score'}
+           </button>
         </div>
       )}
+
       {gameState === 'LEADERBOARD' && (
         <div className="z-20 bg-stone-900 border-2 border-[#d4af37] p-8 rounded-[40px] w-full max-w-xs animate-fade-in shadow-2xl text-center">
           <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest flex items-center justify-center gap-3"><Trophy className="w-6 h-6 text-yellow-500" /> Top Scores</h2>
@@ -140,7 +160,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {leaderboard.map((e, i) => (
               <div key={i} className={`flex justify-between items-center p-3 rounded-xl ${i === 0 ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-white/5'}`}>
                 <span className="text-white font-bold uppercase text-sm">#{i+1} {e.name}</span>
-                <span className="text-yellow-500 font-mono font-black">{e.score}</span>
+                <span className="text-[#d4af37] font-mono font-black">{e.score}</span>
               </div>
             ))}
           </div>
@@ -207,7 +227,10 @@ const RoundTable: React.FC<{
        {isSoldOut && <div className="absolute inset-0 m-auto w-32 h-32 md:w-44 md:h-44 bg-amber-400/20 blur-[40px] md:blur-[60px] animate-pulse rounded-full z-0 opacity-80" />}
        <div className={`absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-[4px] md:border-[6px] flex flex-col items-center justify-center shadow-2xl z-10 bg-white transition-all ${isSoldOut ? 'shadow-[0_0_40px_rgba(212,175,55,0.7)]' : ''}`} style={{ borderColor: isSoldOut ? '#d4af37' : tierColor }}>
           <span className="text-[6px] md:text-[7px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#d4af37]">{isSoldOut ? 'SOLD OUT' : 'TABLE'}</span>
-          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>{tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId}</span>
+          {/* MAPPING: Table 4 -> 3A, Table 14 -> 13A */}
+          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>
+            {tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId}
+          </span>
        </div>
        {seats.map((seat) => {
          const angle = ((seat.seatNumber - 1) / config.seatsPerTable) * 2 * Math.PI - (Math.PI / 2);
@@ -275,15 +298,15 @@ export const App: React.FC = () => {
   const [selectedAdminSeat, setSelectedAdminSeat] = useState<SeatData | null>(null);
   const [timeLeft, setTimeLeft] = useState(LOCK_DURATION_SECONDS); 
   const [isTimerActive, setIsTimerActive] = useState(false);
+  const [spinningSeatId, setSpinningSeatId] = useState<string | null>(null);
 
-  // Aura Gacha State
+  // Aura State
   const [showGachaModal, setShowGachaModal] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinningAura, setSpinningAura] = useState<AuraType>('SILVER');
   const [auraResult, setAuraResult] = useState<AuraType | null>(null);
   const [showFireworks, setShowFireworks] = useState(false);
   const [coinBurst, setCoinBurst] = useState(false);
-  const [spinningSeatId, setSpinningSeatId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('thundering_hooves_aura') as AuraType | null;
@@ -326,7 +349,7 @@ export const App: React.FC = () => {
       setSeats(prevSeats => {
         let baseSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (baseSeats.length === 0) {
-           for (let t = 1; t <= 14; t++) {
+           for (let t = 1; t <= config.totalTables; t++) {
              let tier = t <= 10 ? SeatTier.GOLD : SeatTier.SILVER;
              for (let s = 1; s <= 6; s++) {
                baseSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
@@ -410,8 +433,8 @@ export const App: React.FC = () => {
   if (loading) return <div className="h-full w-full flex items-center justify-center bg-[#0d0101] text-[#d4af37] font-black uppercase tracking-widest px-6 text-center"><RefreshCw className="animate-spin mr-4 shrink-0" /> Synchronizing Hall...</div>;
 
   return (
-    <div className="h-full w-full flex flex-col font-sans cny-pattern no-swipe overflow-hidden">
-      {!showAnnouncement && <Navbar currentView={view} onNavigate={(v) => { if(v==='admin' && !isAdmin) setAuthOpen(true); else setView(v); }} isAdmin={isAdmin} />}
+    <div className="h-full w-full flex flex-col font-sans cny-pattern no-swipe overflow-hidden bg-[#0d0101]">
+      <Navbar currentView={view} onNavigate={(v) => { if(v==='admin' && !isAdmin) setAuthOpen(true); else setView(v); }} isAdmin={isAdmin} />
       {showGameModal && <AngpaoRainGame onClose={() => setShowGameModal(false)} />}
       
       {showGachaModal && (
@@ -479,15 +502,15 @@ export const App: React.FC = () => {
 
       {view === 'hall' && (
         <div className="fixed bottom-6 left-6 z-[9999] flex flex-col gap-3">
-          <button onClick={handleRandomPick} className="whitespace-nowrap px-4 py-3 bg-[#d4af37] text-stone-900 rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 border-2 border-white/30 backdrop-blur-[10px]"><Zap className="w-4 h-4 fill-current animate-pulse" /> Destiny Pick</button>
-          <button onClick={() => setShowGameModal(true)} className="whitespace-nowrap px-4 py-3 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 border-2 border-white/20"><Gamepad2 className="w-4 h-4" /> Catch Angpao</button>
-          <button onClick={handleTestLuck} className="whitespace-nowrap px-4 py-3 bg-purple-600 text-white rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 border-2 border-white/10 backdrop-blur-[10px]"><Sparkles className="w-4 h-4" /> Reveal Aura</button>
+          <button onClick={handleRandomPick} className="whitespace-nowrap px-4 py-3 bg-[#d4af37] text-stone-900 rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 border-2 border-white/30 backdrop-blur-[10px] hover:scale-105 transition-all"><Zap className="w-4 h-4 fill-current animate-pulse" /> Destiny Pick</button>
+          <button onClick={() => setShowGameModal(true)} className="whitespace-nowrap px-4 py-3 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 border-2 border-white/20 hover:scale-105 transition-all"><Gamepad2 className="w-4 h-4" /> Catch Angpao</button>
+          <button onClick={handleTestLuck} className="whitespace-nowrap px-4 py-3 bg-purple-600 text-white rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 border-2 border-white/10 backdrop-blur-[10px] hover:scale-105 transition-all"><Sparkles className="w-4 h-4" /> Reveal Aura</button>
         </div>
       )}
       
       {mySelectedSeats.length > 0 && view === 'hall' && (
         <div className="fixed bottom-6 right-6 z-[9999]">
-          <button onClick={() => setView('cart')} className="px-8 py-4 bg-red-700 text-white rounded-3xl font-black uppercase text-xs flex items-center gap-3 shadow-2xl border-2 border-white/20"><ShoppingBag className="w-5 h-5" /> Book ({mySelectedIds.length})</button>
+          <button onClick={() => setView('cart')} className="px-8 py-4 bg-red-700 text-white rounded-3xl font-black uppercase text-xs flex items-center gap-3 shadow-2xl border-2 border-white/20 hover:scale-110 transition-all"><ShoppingBag className="w-5 h-5" /> Book ({mySelectedIds.length})</button>
         </div>
       )}
 
