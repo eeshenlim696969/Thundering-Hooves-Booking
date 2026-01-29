@@ -13,9 +13,9 @@ import { ImperialAnnouncement } from './components/ImperialAnnouncement';
 import { Home } from './components/Home';
 import { Navbar } from './components/Navbar';
 import { 
-  RefreshCw, 
+  RefreshCw, // Used instead of Loader2 to prevent version errors
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2, Loader2
+  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
@@ -33,9 +33,9 @@ interface AuraData {
 }
 
 const AURA_CONFIG: Record<AuraType, AuraData> = {
-  PLATINUM: { type: 'PLATINUM', title: '🔥 CELESTIAL FIRE HORSE 🔥', icon: '🐎', message: 'Such wonderful luck! You possess a fortune so rare, you must bring this energy to our next event to bless us all!', colorClass: 'holographic-bg text-blue-900', glowClass: 'shadow-[0_0_80px_rgba(147,197,253,1)]' },
-  GOLD: { type: 'GOLD', title: '🐉 MYSTIC GOLD DRAGON 🐉', icon: '🐲', message: 'Your fortune is accumulating! By attending tonight, you will gain even MORE luck and prosperity after this event.', colorClass: 'bg-gradient-to-br from-amber-400 via-yellow-200 to-amber-600 text-amber-950', glowClass: 'shadow-[0_0_60px_rgba(251,191,36,0.9)]' },
-  SILVER: { type: 'SILVER', title: '⚡ SWIFT SILVER TIGER ⚡', icon: '🐅', message: 'Your destiny is changing! Simply by joining this event, your luck is about to SKYROCKET to the moon!', colorClass: 'bg-gradient-to-br from-stone-400 via-stone-100 to-stone-500 text-stone-900', glowClass: 'shadow-[0_0_50px_rgba(214,211,209,0.8)]' }
+  PLATINUM: { type: 'PLATINUM', title: '🔥 CELESTIAL FIRE HORSE 🔥', icon: '🐎', message: 'Such wonderful luck!', colorClass: 'holographic-bg text-blue-900', glowClass: 'shadow-[0_0_80px_rgba(147,197,253,1)]' },
+  GOLD: { type: 'GOLD', title: '🐉 MYSTIC GOLD DRAGON 🐉', icon: '🐲', message: 'Your fortune is accumulating!', colorClass: 'bg-gradient-to-br from-amber-400 via-yellow-200 to-amber-600 text-amber-950', glowClass: 'shadow-[0_0_60px_rgba(251,191,36,0.9)]' },
+  SILVER: { type: 'SILVER', title: '⚡ SWIFT SILVER TIGER ⚡', icon: '🐅', message: 'Your destiny is changing!', colorClass: 'bg-gradient-to-br from-stone-400 via-stone-100 to-stone-500 text-stone-900', glowClass: 'shadow-[0_0_50px_rgba(214,211,209,0.8)]' }
 };
 
 const DEFAULT_PRICES = { [SeatTier.PLATINUM]: 0, [SeatTier.GOLD]: 10.88, [SeatTier.SILVER]: 8.88 };
@@ -59,7 +59,7 @@ const BASE_CONFIG: ConcertConfig = {
   }
 };
 
-// --- MINIGAME COMPONENTS ---
+// --- MINIGAME COMPONENT ---
 const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(15);
@@ -103,7 +103,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       });
       await fetchScores();
       setGameState('LEADERBOARD');
-    } catch (e) { alert("Failed to save score."); }
+    } catch (e) { alert("Failed to save score. Check internet."); }
     setIsSaving(false);
   };
 
@@ -148,7 +148,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
            <div className="text-6xl font-black text-[#d4af37] mb-8">{score}</div>
            <input type="text" placeholder="YOUR NAME" maxLength={10} value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full p-4 bg-stone-100 border-2 rounded-2xl text-center font-black uppercase mb-4 focus:border-[#d4af37] outline-none" />
            <button onClick={handleSaveScore} disabled={isSaving || !playerName.trim()} className="w-full py-4 bg-[#8b0000] text-white rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2">
-             {isSaving ? <Loader2 className="animate-spin" /> : 'Submit Score'}
+             {isSaving ? <RefreshCw className="animate-spin w-5 h-5" /> : 'Submit Score'}
            </button>
         </div>
       )}
@@ -172,6 +172,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
+// --- CORE LAYOUT COMPONENTS ---
 const Stage = () => (
   <div className="w-full max-w-4xl mx-auto mb-20 relative px-4 mt-8">
     <div className="h-28 md:h-40 bg-gradient-to-b from-stone-900 to-stone-950 rounded-t-[100px] border-x-[15px] md:border-x-[40px] border-stone-800 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
@@ -222,15 +223,15 @@ const RoundTable: React.FC<{
   const tierColor = (tier === SeatTier.PLATINUM || tier === SeatTier.GOLD) ? config.tiers[SeatTier.GOLD].color : config.tiers[SeatTier.SILVER].color;
   const isSoldOut = seats.length > 0 && seats.every(s => s.status === SeatStatus.SOLD);
 
+  // LOGIC CHANGE: Table 14 displayed as 13A
+  const displayTableId = tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId;
+
   return (
     <div className="relative select-none transition-transform hover:scale-105 duration-500 shrink-0 z-10 mx-auto" style={{ width: containerSize, height: containerSize }}>
        {isSoldOut && <div className="absolute inset-0 m-auto w-32 h-32 md:w-44 md:h-44 bg-amber-400/20 blur-[40px] md:blur-[60px] animate-pulse rounded-full z-0 opacity-80" />}
        <div className={`absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-[4px] md:border-[6px] flex flex-col items-center justify-center shadow-2xl z-10 bg-white transition-all ${isSoldOut ? 'shadow-[0_0_40px_rgba(212,175,55,0.7)]' : ''}`} style={{ borderColor: isSoldOut ? '#d4af37' : tierColor }}>
           <span className="text-[6px] md:text-[7px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#d4af37]">{isSoldOut ? 'SOLD OUT' : 'TABLE'}</span>
-          {/* MAPPING: Table 4 -> 3A, Table 14 -> 13A */}
-          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>
-            {tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId}
-          </span>
+          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>{displayTableId}</span>
        </div>
        {seats.map((seat) => {
          const angle = ((seat.seatNumber - 1) / config.seatsPerTable) * 2 * Math.PI - (Math.PI / 2);
@@ -238,7 +239,7 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-               data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId === 14 ? '13A' : seat.tableId)} as any} 
+               data={{...seat, tableId: displayTableId} as any} 
                color={tierColor} 
                isSelected={mySelectedIds.includes(seat.id)} 
                isLockedByOther={seat.status !== SeatStatus.AVAILABLE && !mySelectedIds.includes(seat.id)} 
@@ -349,7 +350,7 @@ export const App: React.FC = () => {
       setSeats(prevSeats => {
         let baseSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (baseSeats.length === 0) {
-           for (let t = 1; t <= 14; t++) {
+           for (let t = 1; t <= config.totalTables; t++) {
              let tier = t <= 10 ? SeatTier.GOLD : SeatTier.SILVER;
              for (let s = 1; s <= 6; s++) {
                baseSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
@@ -374,10 +375,10 @@ export const App: React.FC = () => {
     const target = seatsRef.current.find(s => s.id === id);
     if (!target) return;
     if (isAdmin) { setSelectedAdminSeat(target); return; }
-    if (target.status === SeatStatus.AVAILABLE) setMySelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  }, [isAdmin]);
-
-  useEffect(() => { seatsRef.current = seats; }, [seats]);
+    if (target.status === SeatStatus.AVAILABLE) {
+      setMySelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    }
+  }, [isAdmin, seats]);
 
   const handleProceedToCheckout = async (targetIds?: string[]) => {
     const ids = targetIds || mySelectedIds;
