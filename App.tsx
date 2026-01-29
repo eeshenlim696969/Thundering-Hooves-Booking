@@ -160,7 +160,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {leaderboard.map((e, i) => (
               <div key={i} className={`flex justify-between items-center p-3 rounded-xl ${i === 0 ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-white/5'}`}>
                 <span className="text-white font-bold uppercase text-sm">#{i+1} {e.name}</span>
-                <span className="text-[#d4af37] font-mono font-black">{e.score}</span>
+                <span className="text-yellow-500 font-mono font-black">{e.score}</span>
               </div>
             ))}
           </div>
@@ -349,7 +349,7 @@ export const App: React.FC = () => {
       setSeats(prevSeats => {
         let baseSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (baseSeats.length === 0) {
-           for (let t = 1; t <= config.totalTables; t++) {
+           for (let t = 1; t <= 14; t++) {
              let tier = t <= 10 ? SeatTier.GOLD : SeatTier.SILVER;
              for (let s = 1; s <= 6; s++) {
                baseSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
