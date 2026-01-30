@@ -14,7 +14,7 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2, Monitor, Info
+  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2, Monitor, Info, Bell
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
@@ -84,7 +84,71 @@ const BASE_CONFIG: ConcertConfig = {
   }
 };
 
-// --- COMPONENTS ---
+// --- NEW COMPONENTS ---
+
+const Curtains = ({ isOpen }: { isOpen: boolean }) => {
+  return (
+    <div className={`fixed inset-0 z-[60] pointer-events-none flex ${isOpen ? 'pointer-events-none' : ''}`}>
+      {/* Left Curtain */}
+      <div 
+        className="h-full w-1/2 bg-[#550606] relative transition-transform duration-[2000ms] ease-in-out origin-left"
+        style={{ 
+          transform: isOpen ? 'translateX(-100%)' : 'translateX(0)',
+          backgroundImage: 'repeating-linear-gradient(90deg, #550606 0px, #450303 40px, #650808 80px)',
+          boxShadow: '10px 0 30px rgba(0,0,0,0.5)'
+        }}
+      >
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-32 bg-yellow-500/50 rounded-full blur-md"></div>
+      </div>
+      
+      {/* Right Curtain */}
+      <div 
+        className="h-full w-1/2 bg-[#550606] relative transition-transform duration-[2000ms] ease-in-out origin-right"
+        style={{ 
+          transform: isOpen ? 'translateX(100%)' : 'translateX(0)',
+          backgroundImage: 'repeating-linear-gradient(90deg, #550606 0px, #450303 40px, #650808 80px)',
+          boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+        }}
+      >
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-32 bg-yellow-500/50 rounded-full blur-md"></div>
+      </div>
+    </div>
+  );
+};
+
+const LiveTicker = () => {
+  const [message, setMessage] = useState("Welcome to Thundering Hooves!");
+  const [visible, setVisible] = useState(true);
+
+  const messages = [
+    "🔥 Table 1 is hot right now!",
+    "🐎 A Celestial Horse Aura was just revealed!",
+    "🧧 3 people are viewing the Gold Tier.",
+    "⚡ Quick! Silver seats are selling fast.",
+    "🐉 Someone just secured a Dragon's Luck bonus!",
+    "🎟️ Limited seats remaining for the main show."
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setMessage(messages[Math.floor(Math.random() * messages.length)]);
+        setVisible(true);
+      }, 500);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className={`fixed bottom-24 left-6 z-[90] transition-opacity duration-500 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full flex items-center gap-3 shadow-lg">
+        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        <span className="text-yellow-100 text-xs font-bold tracking-wide">{message}</span>
+      </div>
+    </div>
+  );
+};
 
 const DeviceNotice = () => {
   const [visible, setVisible] = useState(true);
@@ -233,7 +297,6 @@ const SectionHeader: React.FC<{ tier: SeatTier, label: string }> = ({ tier, labe
   );
 };
 
-// --- FIXED TABLE COMPONENT (NO GROUP HOVER) ---
 const RoundTable: React.FC<{
   tableId: number;
   seats: SeatData[];
@@ -254,7 +317,6 @@ const RoundTable: React.FC<{
 
   return (
     <div className="relative select-none transition-none shrink-0 z-10 mx-auto" style={{ width: containerSize, height: containerSize }}>
-       {/* Removed 'group' and 'hover:scale' from parent to fix bug */}
        {isSoldOut && <div className="absolute inset-0 m-auto w-32 h-32 md:w-44 md:h-44 bg-amber-400/10 blur-[40px] animate-pulse rounded-full z-0 opacity-50" />}
        
        <div className={`absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-[4px] md:border-[6px] flex flex-col items-center justify-center shadow-2xl z-10 bg-white transition-all ${isSoldOut ? 'opacity-90 grayscale-[0.5]' : ''}`}
@@ -285,7 +347,6 @@ const RoundTable: React.FC<{
                isLockedByOther={seat.status !== SeatStatus.AVAILABLE && !mySelectedIds.includes(seat.id)} 
                onClick={onSeatClick} 
                isAdmin={isAdmin}
-               // Add explicit z-index on hover to fix "everything pops out" bug
                className={`w-10 h-10 md:w-12 md:h-12 transition-all duration-200 ${isSpinningHighlight ? '!bg-yellow-400 !border-white scale-150 z-[100] shadow-[0_0_30px_#facc15]' : ''} hover:z-[50] hover:scale-125 hover:shadow-[0_0_15px_rgba(255,255,255,0.8)]`}
              />
            </div>
@@ -342,11 +403,11 @@ export const App: React.FC = () => {
   const [pendingDetails, setPendingDetails] = useState<Record<string, SeatDetail>>({});
   const [totalPrice, setTotalPrice] = useState(0);
   const [selectedAdminSeat, setSelectedAdminSeat] = useState<SeatData | null>(null);
+  const [curtainsOpen, setCurtainsOpen] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState(LOCK_DURATION_SECONDS); 
   const [isTimerActive, setIsTimerActive] = useState(false);
 
-  // Gacha & Game State
   const [showGachaModal, setShowGachaModal] = useState(false);
   const [showGameModal, setShowGameModal] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -362,6 +423,15 @@ export const App: React.FC = () => {
       setAuraResult(saved);
     }
   }, []);
+
+  // Trigger curtains when entering hall
+  useEffect(() => {
+    if (view === 'hall') {
+      setTimeout(() => setCurtainsOpen(true), 100);
+    } else {
+      setCurtainsOpen(false);
+    }
+  }, [view]);
 
   const triggerAuraResult = (res: AuraType) => {
     setAuraResult(res);
@@ -601,6 +671,12 @@ export const App: React.FC = () => {
       {!showAnnouncement && (
         <Navbar currentView={view} onNavigate={handleNavigate} isAdmin={isAdmin} />
       )}
+
+      {/* NEW: THEATRICAL CURTAINS */}
+      <Curtains isOpen={curtainsOpen} />
+
+      {/* NEW: LIVE TICKER */}
+      {view === 'hall' && <LiveTicker />}
 
       {showGameModal && <AngpaoRainGame onClose={() => setShowGameModal(false)} />}
 
