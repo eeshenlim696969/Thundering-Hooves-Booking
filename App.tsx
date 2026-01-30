@@ -350,7 +350,7 @@ export const App: React.FC = () => {
       setSeats(prevSeats => {
         let baseSeats: SeatData[] = prevSeats.length > 0 ? [...prevSeats] : [];
         if (baseSeats.length === 0) {
-           for (let t = 1; t <= 14; t++) {
+           for (let t = 1; t <= config.totalTables; t++) {
              let tier = t <= 10 ? SeatTier.GOLD : SeatTier.SILVER;
              for (let s = 1; s <= 6; s++) {
                baseSeats.push({ id: `t${t}-s${s}`, tableId: t, seatNumber: s, status: SeatStatus.AVAILABLE, tier, price: config.tiers[tier].price });
@@ -375,12 +375,10 @@ export const App: React.FC = () => {
     const target = seatsRef.current.find(s => s.id === id);
     if (!target) return;
     if (isAdmin) { setSelectedAdminSeat(target); return; }
-    if (target.status === SeatStatus.AVAILABLE) {
-      setMySelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    } else if (mySelectedIds.includes(id)) {
-      setMySelectedIds(prev => prev.filter(i => i !== id));
-    }
-  }, [isAdmin, seats]);
+    if (target.status === SeatStatus.AVAILABLE) setMySelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  }, [isAdmin]);
+
+  useEffect(() => { seatsRef.current = seats; }, [seats]);
 
   const handleProceedToCheckout = async (targetIds?: string[]) => {
     const ids = targetIds || mySelectedIds;
@@ -459,7 +457,7 @@ export const App: React.FC = () => {
         }
       `}</style>
 
-      <Navbar currentView={view} onNavigate={(v) => { if(v==='admin' && !isAdmin) setAuthOpen(true); else setView(v); }} isAdmin={isAdmin} />
+      {!showAnnouncement && <Navbar currentView={view} onNavigate={(v) => { if(v==='admin' && !isAdmin) setAuthOpen(true); else setView(v); }} isAdmin={isAdmin} />}
       {showGameModal && <AngpaoRainGame onClose={() => setShowGameModal(false)} />}
       
       {showGachaModal && (
