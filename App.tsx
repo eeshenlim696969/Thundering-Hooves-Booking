@@ -617,47 +617,60 @@ export const App: React.FC = () => {
     <div 
       className="h-full w-full flex flex-col font-sans no-swipe overflow-hidden relative"
       style={{
-        // DEEP PREMIUM BACKGROUND
-        backgroundColor: '#0a0202',
+        // 1. Base Color: Rich Imperial Red
+        backgroundColor: '#7f1d1d',
+        
+        // 2. The Texture Stack
         backgroundImage: `
-          radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.25) 0%, transparent 60%),
-          radial-gradient(circle at 50% 100%, rgba(139, 0, 0, 0.4) 0%, transparent 50%),
-          repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 20px),
-          linear-gradient(to bottom, #1a0505 0%, #0a0202 100%)
+          /* Layer 1: The Gold Spotlight at the top */
+          radial-gradient(circle at 50% -10%, rgba(255, 223, 0, 0.4) 0%, transparent 60%),
+          
+          /* Layer 2: Subtle "Dragon Scale" / Diamond Mesh Pattern */
+          repeating-linear-gradient(45deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 2px, transparent 2px, transparent 16px),
+          repeating-linear-gradient(-45deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 2px, transparent 2px, transparent 16px),
+          
+          /* Layer 3: Deep Vignette edges */
+          radial-gradient(circle at 50% 50%, transparent 20%, rgba(0,0,0,0.6) 100%),
+          
+          /* Layer 4: The vibrant red base gradient */
+          linear-gradient(180deg, #991b1b 0%, #450a0a 100%)
         `
       }}
     >
-      {/* Dynamic Background Animations (Embers) */}
+      {/* Dynamic Background Animations (Upgraded Embers) */}
       <style>{`
         @keyframes floatUp {
-          0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
-          20% { opacity: 0.6; }
-          80% { opacity: 0.4; }
-          100% { transform: translateY(-20vh) scale(1); opacity: 0; }
+          0% { transform: translateY(110vh) scale(0.5); opacity: 0; }
+          20% { opacity: 0.8; }
+          80% { opacity: 0.6; }
+          100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
         }
         .bg-ember {
           position: absolute;
-          background: radial-gradient(circle, #fbbf24 0%, transparent 70%);
+          background: #fbbf24;
           border-radius: 50%;
+          box-shadow: 0 0 10px #fbbf24;
           pointer-events: none;
           animation-name: floatUp;
-          animation-timing-function: ease-in;
+          animation-timing-function: linear;
           animation-iteration-count: infinite;
+          z-index: 0;
         }
       `}</style>
 
-      {/* Generating random embers for the background */}
+      {/* Generating random glowing embers */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        {[...Array(15)].map((_, i) => (
+        {[...Array(25)].map((_, i) => (
           <div 
             key={i}
             className="bg-ember"
             style={{
               left: `${Math.random() * 100}%`,
-              width: `${Math.random() * 6 + 2}px`,
-              height: `${Math.random() * 6 + 2}px`,
-              animationDuration: `${Math.random() * 10 + 10}s`,
-              animationDelay: `${Math.random() * 10}s`
+              width: `${Math.random() * 8 + 3}px`,
+              height: `${Math.random() * 8 + 3}px`,
+              animationDuration: `${Math.random() * 8 + 5}s`,
+              animationDelay: `${Math.random() * 5}s`,
+              opacity: Math.random() * 0.5 + 0.3
             }}
           />
         ))}
