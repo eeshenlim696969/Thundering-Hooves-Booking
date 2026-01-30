@@ -14,7 +14,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  seats, onSelectSeat, onReset, onApprove, onLogout
+  seats, onSelectSeat, onReset, onApprove, onLogout 
 }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<SeatStatus | 'ALL'>('ALL');
@@ -29,43 +29,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
   }, [seats]);
 
-  // Filtering Logic (Now includes Email search)
+  // Filtering Logic
   const filteredSeats = useMemo(() => {
     return seats.filter(s => {
       const info = s.paymentInfo;
       const searchLower = filter.toLowerCase();
 
-      // Search by Name, ID, IC, Car Plate, or EMAIL
+      // Search by Name, ID, IC, Email, or Car Plate
       const matchSearch = 
         s.id.toLowerCase().includes(searchLower) ||
         (info?.studentName && info.studentName.toLowerCase().includes(searchLower)) ||
         (info?.studentId && info.studentId.toLowerCase().includes(searchLower)) ||
         (info?.icNumber && info.icNumber.toLowerCase().includes(searchLower)) ||
-        (info?.carPlate && info.carPlate.toLowerCase().includes(searchLower)) ||
-        (info?.email && info.email.toLowerCase().includes(searchLower)); // <--- Added Email Search
+        (info?.email && info.email.toLowerCase().includes(searchLower)) ||
+        (info?.carPlate && info.carPlate.toLowerCase().includes(searchLower));
       
       const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [seats, filter, statusFilter]);
 
-  // CSV Export Function (Updated with Email/Phone)
+  // CSV Export Function
   const handleExportCSV = () => {
-    // 1. Define Headers
+    // 1. Define Headers (Added Email & Phone)
     const headers = [
-      'Seat ID', 
-      'Table', 
-      'Seat', 
-      'Status', 
-      'Price', 
-      'Category', 
-      'Guest Name', 
-      'ID / IC', 
-      'Email',        // <--- New Column
-      'Phone',        // <--- New Column
-      'Car Plate', 
-      'Club Member?', 
-      'Vegan?'
+      'Seat ID', 'Table', 'Seat', 'Status', 'Price', 'Category', 'Guest Name', 
+      'ID / IC', 'Email', 'Phone', 'Car Plate', 'Club Member?', 'Vegan?'
     ];
 
     // 2. Map Data Rows
@@ -80,8 +69,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         info?.category || '-',
         info?.studentName || '-',
         info?.studentId || info?.icNumber || '-',
-        info?.email || '-',           // <--- Export Email
-        info?.phoneNumber || '-',     // <--- Export Phone
+        info?.email || '-',           // <--- Added Email
+        info?.phoneNumber || '-',     // <--- Added Phone
         info?.carPlate || '-',
         info?.isMember ? 'Yes' : 'No',
         info?.isVegan ? 'Yes' : 'No'
@@ -176,7 +165,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <th className="pb-4">Status</th>
               <th className="pb-4">Guest</th>
               <th className="pb-4">Category</th>
-              <th className="pb-4">Contact</th> {/* NEW HEADER */}
+              <th className="pb-4">Contact</th> {/* Added Contact Header */}
               <th className="pb-4">Details</th>
               <th className="pb-4 text-right pr-4">Actions</th>
             </tr>
@@ -213,23 +202,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {info?.category || '-'}
                   </td>
                   
-                  {/* --- NEW CONTACT COLUMN --- */}
+                  {/* --- NEW CONTACT COLUMN (Displays Email/Phone) --- */}
                   <td className="py-4">
                     {info ? (
-                      <div className="flex flex-col gap-1 text-xs">
+                      <div className="flex flex-col gap-1 text-xs text-stone-500">
                         {info.email && (
-                          <div className="flex items-center gap-1.5 text-stone-500">
+                          <div className="flex items-center gap-1.5" title={info.email}>
                             <Mail className="w-3 h-3 text-stone-400" /> 
-                            <span className="truncate max-w-[150px]" title={info.email}>{info.email}</span>
+                            <span className="truncate max-w-[140px]">{info.email}</span>
                           </div>
                         )}
                         {info.phoneNumber && (
-                          <div className="flex items-center gap-1.5 text-stone-500">
+                          <div className="flex items-center gap-1.5">
                             <Phone className="w-3 h-3 text-stone-400" /> 
                             <span>{info.phoneNumber}</span>
                           </div>
                         )}
-                        {!info.email && !info.phoneNumber && <span className="text-stone-300 text-[10px]">-</span>}
+                        {!info.email && !info.phoneNumber && <span className="text-stone-300 text-[10px]">No info</span>}
                       </div>
                     ) : <span className="text-stone-300">-</span>}
                   </td>
