@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { SeatData, SeatStatus, SeatTier } from '../types'; // Removed SeatDetail from imports if not used directly
+import { SeatData, SeatStatus, SeatTier } from '../types';
 import { Search, Download, Trash2, Check, Edit2, Filter, Mail, Phone, User } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -14,7 +14,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  seats, onSelectSeat, onReset, onApprove, onLogout, currentPrices, onUpdatePrices 
+  seats, onSelectSeat, onReset, onApprove, onLogout
 }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<SeatStatus | 'ALL'>('ALL');
@@ -29,27 +29,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
   }, [seats]);
 
-  // Filtering Logic
+  // Filtering Logic (Now includes Email search)
   const filteredSeats = useMemo(() => {
     return seats.filter(s => {
       const info = s.paymentInfo;
       const searchLower = filter.toLowerCase();
 
-      // Safe check for all fields to prevent crashes
+      // Search by Name, ID, IC, Car Plate, or EMAIL
       const matchSearch = 
         s.id.toLowerCase().includes(searchLower) ||
         (info?.studentName && info.studentName.toLowerCase().includes(searchLower)) ||
         (info?.studentId && info.studentId.toLowerCase().includes(searchLower)) ||
         (info?.icNumber && info.icNumber.toLowerCase().includes(searchLower)) ||
-        (info?.email && info.email.toLowerCase().includes(searchLower)) || 
-        (info?.carPlate && info.carPlate.toLowerCase().includes(searchLower));
+        (info?.carPlate && info.carPlate.toLowerCase().includes(searchLower)) ||
+        (info?.email && info.email.toLowerCase().includes(searchLower)); // <--- Added Email Search
       
       const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [seats, filter, statusFilter]);
 
-  // CSV Export Function
+  // CSV Export Function (Updated with Email/Phone)
   const handleExportCSV = () => {
     // 1. Define Headers
     const headers = [
@@ -61,8 +61,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       'Category', 
       'Guest Name', 
       'ID / IC', 
-      'Email',        // <--- Added Email Column
-      'Phone',        // <--- Added Phone Column
+      'Email',        // <--- New Column
+      'Phone',        // <--- New Column
       'Car Plate', 
       'Club Member?', 
       'Vegan?'
@@ -80,8 +80,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         info?.category || '-',
         info?.studentName || '-',
         info?.studentId || info?.icNumber || '-',
-        info?.email || '-',       // <--- Data for Email
-        info?.phoneNumber || '-', // <--- Data for Phone (Note: check property name in types.ts: phoneNumber vs phone)
+        info?.email || '-',           // <--- Export Email
+        info?.phoneNumber || '-',     // <--- Export Phone
         info?.carPlate || '-',
         info?.isMember ? 'Yes' : 'No',
         info?.isVegan ? 'Yes' : 'No'
@@ -176,7 +176,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <th className="pb-4">Status</th>
               <th className="pb-4">Guest</th>
               <th className="pb-4">Category</th>
-              <th className="pb-4">Contact (Email/Phone)</th> {/* NEW COLUMN HEADER */}
+              <th className="pb-4">Contact</th> {/* NEW HEADER */}
               <th className="pb-4">Details</th>
               <th className="pb-4 text-right pr-4">Actions</th>
             </tr>
@@ -213,7 +213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {info?.category || '-'}
                   </td>
                   
-                  {/* --- NEW COLUMN FOR EMAIL AND PHONE --- */}
+                  {/* --- NEW CONTACT COLUMN --- */}
                   <td className="py-4">
                     {info ? (
                       <div className="flex flex-col gap-1 text-xs">
@@ -229,7 +229,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span>{info.phoneNumber}</span>
                           </div>
                         )}
-                        {!info.email && !info.phoneNumber && <span className="text-stone-300 text-[10px]">No contact info</span>}
+                        {!info.email && !info.phoneNumber && <span className="text-stone-300 text-[10px]">-</span>}
                       </div>
                     ) : <span className="text-stone-300">-</span>}
                   </td>
