@@ -14,12 +14,11 @@ import { Navbar } from './components/Navbar';
 import { 
   RefreshCw, 
   Trash2, Flame, Sparkles, ShoppingBag, ChevronLeft, Star,
-  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2, Clock
+  LogOut, Ticket, X, Zap, Trophy, Gift, Gamepad2
 } from 'lucide-react';
 
 const MEMBER_DISCOUNT_AMOUNT = 1.00;
 const LOCK_DURATION_SECONDS = 300; 
-const EVENT_DATE = "2026-02-12T18:00:00"; // Event Start Time
 
 type AuraType = 'PLATINUM' | 'GOLD' | 'SILVER';
 
@@ -95,17 +94,19 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEffect(() => {
     if (gameOver) return;
     
+    // Spawn angpaos
     const spawnInterval = setInterval(() => {
       setAngpaos(prev => [
         ...prev, 
         { 
           id: Date.now(), 
-          left: Math.random() * 90, 
-          speed: 2 + Math.random() * 3 
+          left: Math.random() * 90, // Random horizontal position
+          speed: 2 + Math.random() * 3 // Random speed
         }
       ]);
     }, 500);
 
+    // Timer
     const timerInterval = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -128,16 +129,19 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100001] bg-black/80 flex flex-col items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 z-[100001] bg-black/80 flex flex-col items-center justify-center overflow-hidden cny-pattern">
+      {/* Game Header */}
       <div className="absolute top-10 flex gap-8 text-white font-black text-2xl uppercase tracking-widest z-10 bg-black/50 p-4 rounded-2xl backdrop-blur-md border border-white/20">
         <div className="text-yellow-400">Score: {score}</div>
         <div className={timeLeft < 5 ? "text-red-500 animate-pulse" : "text-white"}>Time: {timeLeft}s</div>
       </div>
 
+      {/* Close Button */}
       <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 z-20">
         <X className="text-white w-8 h-8" />
       </button>
 
+      {/* Falling Angpaos */}
       {!gameOver && angpaos.map(angpao => (
         <div 
           key={angpao.id}
@@ -146,7 +150,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           style={{ 
             left: `${angpao.left}%`, 
             animationDuration: `${angpao.speed}s`,
-            top: '-50px' 
+            top: '-50px' // Start above screen
           }}
         >
           <div className="w-16 h-20 bg-red-600 rounded-lg border-2 border-yellow-400 flex items-center justify-center shadow-lg relative overflow-hidden">
@@ -156,12 +160,14 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
       ))}
 
+      {/* Game Over Screen */}
       {gameOver && (
         <div className="z-20 bg-[#fff7ed] p-10 rounded-[40px] text-center border-4 border-[#d4af37] animate-bounce-in shadow-[0_0_100px_rgba(212,175,55,0.5)] max-w-sm mx-4">
            <Trophy className="w-20 h-20 text-[#d4af37] mx-auto mb-4" />
            <h2 className="text-4xl font-black text-[#8b0000] mb-2 uppercase font-serif">Prosperity!</h2>
            <p className="text-stone-600 font-bold uppercase tracking-widest mb-6">You collected</p>
            <div className="text-6xl font-black text-[#d4af37] mb-8 drop-shadow-sm">{score}</div>
+           <p className="text-xs text-stone-400 font-bold mb-8 italic">"May your wealth overflow like the rain!"</p>
            <button 
              onClick={onClose}
              className="w-full py-4 bg-[#8b0000] text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-lg"
@@ -171,6 +177,7 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
       )}
       
+      {/* CSS for Falling Animation - Injected here for simplicity */}
       <style>{`
         @keyframes fall {
           0% { transform: translateY(0) rotate(0deg); }
@@ -185,67 +192,29 @@ const AngpaoRainGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     </div>
   );
 };
+// ----------------------------
 
-// --- ENHANCED STAGE WITH COUNTDOWN ---
-const Stage = () => {
-  const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number, seconds: number} | null>(null);
-
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const difference = +new Date(EVENT_DATE) - +new Date();
-      if (difference > 0) {
-        return {
-          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-          minutes: Math.floor((difference / 1000 / 60) % 60),
-          seconds: Math.floor((difference / 1000) % 60),
-        };
-      }
-      return null;
-    };
-
-    setTimeLeft(calculateTimeLeft());
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="w-full max-w-4xl mx-auto mb-20 relative px-4 mt-8">
-      <div className="h-32 md:h-48 bg-gradient-to-b from-stone-900 to-stone-950 rounded-t-[100px] border-x-[15px] md:border-x-[40px] border-stone-800 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.4)_0%,transparent_70%)] animate-pulse" />
-        <div className="absolute top-0 left-0 w-full h-1 bg-[#d4af37]/60 shadow-[0_0_25px_#d4af37]" />
-        
-        <div className="flex flex-col items-center gap-2 relative z-10">
-          <div className="flex items-center gap-3 md:gap-6 text-[#d4af37]">
-            <Trophy className="w-5 h-5 md:w-8 md:h-8 animate-pulse text-yellow-500" />
-            <div className="text-center">
-              <h3 className="font-serif font-black text-lg md:text-3xl tracking-[0.2em] uppercase text-gold-glow drop-shadow-[0_0_10px_rgba(212,175,55,0.5)] mb-1">
-                THUNDERING HOOVES
-              </h3>
-              {timeLeft ? (
-                <div className="flex items-center justify-center gap-3 md:gap-6 text-xs md:text-lg font-mono font-bold text-yellow-200 bg-black/40 px-6 py-2 rounded-full border border-yellow-500/30 backdrop-blur-md">
-                   <div className="flex flex-col items-center"><span className="text-xl md:text-2xl text-white">{timeLeft.days}</span><span className="text-[8px] md:text-[10px] uppercase opacity-60">Days</span></div>
-                   <span className="opacity-40">:</span>
-                   <div className="flex flex-col items-center"><span className="text-xl md:text-2xl text-white">{timeLeft.hours}</span><span className="text-[8px] md:text-[10px] uppercase opacity-60">Hrs</span></div>
-                   <span className="opacity-40">:</span>
-                   <div className="flex flex-col items-center"><span className="text-xl md:text-2xl text-white">{timeLeft.minutes}</span><span className="text-[8px] md:text-[10px] uppercase opacity-60">Mins</span></div>
-                </div>
-              ) : (
-                <div className="text-xl md:text-2xl font-black text-red-500 animate-bounce">LIVE NOW</div>
-              )}
-            </div>
-            <Trophy className="w-5 h-5 md:w-8 md:h-8 animate-pulse text-yellow-500" />
-          </div>
+const Stage = () => (
+  <div className="w-full max-w-4xl mx-auto mb-20 relative px-4 mt-8">
+    <div className="h-28 md:h-40 bg-gradient-to-b from-stone-900 to-stone-950 rounded-t-[100px] border-x-[15px] md:border-x-[40px] border-stone-800 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.4)_0%,transparent_70%)] animate-pulse" />
+      <div className="absolute top-0 left-0 w-full h-1 bg-[#d4af37]/60 shadow-[0_0_25px_#d4af37]" />
+      
+      <div className="flex flex-col items-center gap-2 relative z-10">
+        <div className="flex items-center gap-4 text-[#d4af37]">
+          <Trophy className="w-5 h-5 md:w-7 md:h-7 animate-pulse" />
+          <h3 className="font-serif font-black text-xl md:text-5xl tracking-[0.4em] uppercase text-gold-glow drop-shadow-[0_0_10px_rgba(212,175,55,0.5)]">
+            MAIN STAGE
+          </h3>
+          <Trophy className="w-5 h-5 md:w-7 md:h-7 animate-pulse" />
         </div>
+        <div className="w-32 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent" />
       </div>
-      {/* Spotlight rays below stage */}
-      <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-3/4 h-56 bg-[radial-gradient(50%_50%_at_50%_0%,rgba(212,175,55,0.15)_0%,transparent_100%)] pointer-events-none blur-xl" />
     </div>
-  );
-};
+    {/* Spotlight rays below stage */}
+    <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-3/4 h-56 bg-[radial-gradient(50%_50%_at_50%_0%,rgba(212,175,55,0.15)_0%,transparent_100%)] pointer-events-none blur-xl" />
+  </div>
+);
 
 const SectionHeader: React.FC<{ tier: SeatTier, label: string }> = ({ tier, label }) => {
   const visualTier = label.includes("GOLD") ? SeatTier.GOLD : tier;
@@ -271,7 +240,6 @@ const SectionHeader: React.FC<{ tier: SeatTier, label: string }> = ({ tier, labe
   );
 };
 
-// --- ENHANCED TABLE WITH STAMP EFFECT ---
 const RoundTable: React.FC<{
   tableId: number;
   seats: SeatData[];
@@ -295,33 +263,18 @@ const RoundTable: React.FC<{
   const isSoldOut = displaySeats.length > 0 && displaySeats.every(s => s.status === SeatStatus.SOLD);
 
   return (
-    <div className="relative select-none transition-transform hover:scale-105 duration-500 shrink-0 z-10 mx-auto group" style={{ width: containerSize, height: containerSize }}>
+    <div className="relative select-none transition-transform hover:scale-105 duration-500 shrink-0 z-10 mx-auto" style={{ width: containerSize, height: containerSize }}>
        {isSoldOut && (
-         <div className="absolute inset-0 m-auto w-32 h-32 md:w-44 md:h-44 bg-amber-400/10 blur-[40px] animate-pulse rounded-full z-0 opacity-50" />
+         <div className="absolute inset-0 m-auto w-32 h-32 md:w-44 md:h-44 bg-amber-400/20 blur-[40px] md:blur-[60px] animate-pulse rounded-full z-0 opacity-80" />
        )}
        
-       <div className={`absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-[4px] md:border-[6px] flex flex-col items-center justify-center shadow-2xl z-10 bg-white transition-all ${isSoldOut ? 'opacity-90 grayscale-[0.5]' : ''}`}
-          style={{ borderColor: isSoldOut ? '#78350f' : tierColor }}>
-          
-          {/* SOLD OUT STAMP EFFECT */}
-          {isSoldOut ? (
-             <div className="absolute inset-0 flex items-center justify-center z-50">
-                <div className="border-[3px] border-red-800 rounded-lg p-1 -rotate-12 opacity-90 shadow-sm bg-white/50 backdrop-blur-[1px]">
-                  <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-red-800 block text-center px-1">
-                    SOLD OUT
-                  </span>
-                </div>
-             </div>
-          ) : (
-            <>
-              <span className="text-[6px] md:text-[7px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-stone-400">TABLE</span>
-              <span className="text-xl md:text-4xl font-serif font-black text-stone-900">
-                {tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId}
-              </span>
-            </>
-          )}
+       <div className={`absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-[4px] md:border-[6px] flex flex-col items-center justify-center shadow-2xl z-10 bg-white transition-all ${isSoldOut ? 'shadow-[0_0_40px_rgba(212,175,55,0.7)]' : ''}`}
+          style={{ borderColor: isSoldOut ? '#d4af37' : tierColor }}>
+          <span className="text-[6px] md:text-[7px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#d4af37]">{isSoldOut ? 'SOLD OUT' : 'TABLE'}</span>
+          <span className={`text-xl md:text-4xl font-serif font-black ${isSoldOut ? 'text-[#d4af37]' : 'text-stone-900'}`}>
+            {tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId}
+          </span>
        </div>
-
        {displaySeats.map((seat) => {
          const angle = ((seat.seatNumber - 1) / config.seatsPerTable) * 2 * Math.PI - (Math.PI / 2);
          const isSpinningHighlight = spinningSeatId === seat.id;
@@ -334,7 +287,7 @@ const RoundTable: React.FC<{
                isLockedByOther={seat.status !== SeatStatus.AVAILABLE && !mySelectedIds.includes(seat.id)} 
                onClick={onSeatClick} 
                isAdmin={isAdmin}
-               className={`w-10 h-10 md:w-12 md:h-12 transition-all duration-300 ${isSpinningHighlight ? '!bg-yellow-400 !border-white scale-150 z-[100] shadow-[0_0_30px_#facc15]' : ''} hover:scale-125 hover:shadow-[0_0_15px_rgba(255,255,255,0.8)]`}
+               className={`w-10 h-10 md:w-12 md:h-12 ${isSpinningHighlight ? '!bg-yellow-400 !border-white scale-150 z-[100] shadow-[0_0_30px_#facc15]' : ''}`}
              />
            </div>
          );
