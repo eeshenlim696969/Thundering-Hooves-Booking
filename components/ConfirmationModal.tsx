@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { SeatData, SeatStatus, SeatTier, SeatDetail } from '../types';
-import { Search, Download, Trash2, RefreshCw, X, Check, Edit2, Save, Filter, Mail, Phone } from 'lucide-react';
+import { SeatData, SeatStatus, SeatTier } from '../types'; // Removed SeatDetail from imports if not used directly
+import { Search, Download, Trash2, Check, Edit2, Filter, Mail, Phone, User } from 'lucide-react';
 
 interface AdminDashboardProps {
   seats: SeatData[];
@@ -14,13 +14,12 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  seats, onSelectSeat, onReset, onApprove, onLogout, onPreviewAura, currentPrices, onUpdatePrices 
+  seats, onSelectSeat, onReset, onApprove, onLogout, currentPrices, onUpdatePrices 
 }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<SeatStatus | 'ALL'>('ALL');
-  const [prices, setPrices] = useState(currentPrices);
-  const [isEditingPrices, setIsEditingPrices] = useState(false);
 
+  // Stats Calculation
   const stats = useMemo(() => {
     return {
       total: seats.length,
@@ -30,39 +29,66 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
   }, [seats]);
 
+  // Filtering Logic
   const filteredSeats = useMemo(() => {
     return seats.filter(s => {
+      const info = s.paymentInfo;
+      const searchLower = filter.toLowerCase();
+
+      // Safe check for all fields to prevent crashes
       const matchSearch = 
-        s.id.toLowerCase().includes(filter.toLowerCase()) ||
-        s.paymentInfo?.studentName.toLowerCase().includes(filter.toLowerCase()) ||
-        s.paymentInfo?.studentId?.toLowerCase().includes(filter.toLowerCase()) ||
-        s.paymentInfo?.icNumber?.toLowerCase().includes(filter.toLowerCase()) ||
-        s.paymentInfo?.email?.toLowerCase().includes(filter.toLowerCase()); // Added Email Search
+        s.id.toLowerCase().includes(searchLower) ||
+        (info?.studentName && info.studentName.toLowerCase().includes(searchLower)) ||
+        (info?.studentId && info.studentId.toLowerCase().includes(searchLower)) ||
+        (info?.icNumber && info.icNumber.toLowerCase().includes(searchLower)) ||
+        (info?.email && info.email.toLowerCase().includes(searchLower)) || 
+        (info?.carPlate && info.carPlate.toLowerCase().includes(searchLower));
       
       const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [seats, filter, statusFilter]);
 
+  // CSV Export Function
   const handleExportCSV = () => {
-    const headers = ['Seat ID', 'Table', 'Seat', 'Status', 'Tier', 'Price', 'Name', 'Category', 'ID / IC', 'Car Plate', 'Email', 'Phone', 'Member?', 'Vegan?'];
-    const rows = seats.map(s => [
-      s.id,
-      s.tableId === 4 ? '3A' : (s.tableId === 14 ? '13A' : s.tableId),
-      s.seatNumber,
-      s.status,
-      s.tier,
-      s.price,
-      s.paymentInfo?.studentName || '-',
-      s.paymentInfo?.category || '-',
-      s.paymentInfo?.studentId || s.paymentInfo?.icNumber || '-',
-      s.paymentInfo?.carPlate || '-',
-      s.paymentInfo?.email || '-',        // Added to CSV
-      s.paymentInfo?.phoneNumber || '-',  // Added to CSV
-      s.paymentInfo?.isMember ? 'Yes' : 'No',
-      s.paymentInfo?.isVegan ? 'Yes' : 'No'
-    ]);
+    // 1. Define Headers
+    const headers = [
+      'Seat ID', 
+      'Table', 
+      'Seat', 
+      'Status', 
+      'Price', 
+      'Category', 
+      'Guest Name', 
+      'ID / IC', 
+      'Email',        // <--- Added Email Column
+      'Phone',        // <--- Added Phone Column
+      'Car Plate', 
+      'Club Member?', 
+      'Vegan?'
+    ];
 
+    // 2. Map Data Rows
+    const rows = seats.map(s => {
+      const info = s.paymentInfo;
+      return [
+        s.id,
+        s.tableId === 4 ? '3A' : (s.tableId === 14 ? '13A' : s.tableId),
+        s.seatNumber,
+        s.status,
+        s.price,
+        info?.category || '-',
+        info?.studentName || '-',
+        info?.studentId || info?.icNumber || '-',
+        info?.email || '-',       // <--- Data for Email
+        info?.phoneNumber || '-', // <--- Data for Phone (Note: check property name in types.ts: phoneNumber vs phone)
+        info?.carPlate || '-',
+        info?.isMember ? 'Yes' : 'No',
+        info?.isVegan ? 'Yes' : 'No'
+      ];
+    });
+
+    // 3. Generate File
     const csvContent = "data:text/csv;charset=utf-8," + 
       [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     
@@ -84,11 +110,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <h2 className="text-3xl font-black uppercase tracking-widest text-[#d4af37]">Command Center</h2>
             <p className="text-stone-400 font-serif italic">Event Overview & Management</p>
           </div>
-          <div className="flex gap-4">
-             <button onClick={onLogout} className="px-6 py-2 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-xl font-bold uppercase text-xs tracking-widest transition-colors">
-               Log Out
-             </button>
-          </div>
+          <button onClick={onLogout} className="px-6 py-2 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-xl font-bold uppercase text-xs tracking-widest transition-colors">
+            Log Out
+          </button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -139,7 +163,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
         <button onClick={handleExportCSV} className="flex items-center gap-2 px-6 py-2.5 bg-[#d4af37] text-stone-900 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#b5952f] transition-colors shadow-lg">
-          <Download className="w-4 h-4" /> Export CSV
+          <Download className="w-4 h-4" /> Export Excel
         </button>
       </div>
 
@@ -150,86 +174,93 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <tr className="text-stone-400 text-[10px] uppercase tracking-widest border-b border-stone-100">
               <th className="pb-4 pl-4">Seat</th>
               <th className="pb-4">Status</th>
-              <th className="pb-4">Guest Name</th>
+              <th className="pb-4">Guest</th>
               <th className="pb-4">Category</th>
-              <th className="pb-4">Contact</th> {/* Merged Email/Phone column for space */}
-              <th className="pb-4">Details</th> {/* ID/IC/Car */}
+              <th className="pb-4">Contact (Email/Phone)</th> {/* NEW COLUMN HEADER */}
+              <th className="pb-4">Details</th>
               <th className="pb-4 text-right pr-4">Actions</th>
             </tr>
           </thead>
           <tbody className="text-stone-600 font-medium">
-            {filteredSeats.map(seat => (
-              <tr key={seat.id} className="border-b border-stone-50 hover:bg-stone-50/50 transition-colors group">
-                <td className="py-4 pl-4">
-                  <div className="flex flex-col">
-                    <span className="font-black text-stone-900">T-{seat.tableId === 4 ? '3A' : (seat.tableId === 14 ? '13A' : seat.tableId)}</span>
-                    <span className="text-xs">Seat {seat.seatNumber}</span>
-                  </div>
-                </td>
-                <td className="py-4">
-                  <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
-                    seat.status === SeatStatus.SOLD ? 'bg-green-100 text-green-700 border-green-200' : 
-                    seat.status === SeatStatus.CHECKOUT ? 'bg-amber-100 text-amber-700 border-amber-200' : 
-                    'bg-stone-100 text-stone-400 border-stone-200'
-                  }`}>
-                    {seat.status}
-                  </span>
-                </td>
-                <td className="py-4">
-                  {seat.paymentInfo ? (
-                    <div className="font-bold text-stone-800">{seat.paymentInfo.studentName}</div>
-                  ) : (
-                    <span className="text-stone-300 italic">-</span>
-                  )}
-                </td>
-                <td className="py-4">
-                  {seat.paymentInfo?.category || '-'}
-                </td>
-                <td className="py-4">
-                  {/* NEW CONTACT COLUMN */}
-                  {seat.paymentInfo?.email || seat.paymentInfo?.phoneNumber ? (
-                    <div className="flex flex-col gap-1 text-xs">
-                      {seat.paymentInfo.email && (
-                        <div className="flex items-center gap-1.5 text-stone-500">
-                          <Mail className="w-3 h-3" /> <span className="truncate max-w-[150px]">{seat.paymentInfo.email}</span>
-                        </div>
-                      )}
-                      {seat.paymentInfo.phoneNumber && (
-                        <div className="flex items-center gap-1.5 text-stone-500">
-                          <Phone className="w-3 h-3" /> {seat.paymentInfo.phoneNumber}
-                        </div>
-                      )}
+            {filteredSeats.map(seat => {
+              const info = seat.paymentInfo;
+              return (
+                <tr key={seat.id} className="border-b border-stone-50 hover:bg-stone-50/50 transition-colors group">
+                  <td className="py-4 pl-4">
+                    <div className="flex flex-col">
+                      <span className="font-black text-stone-900">T-{seat.tableId === 4 ? '3A' : (seat.tableId === 14 ? '13A' : seat.tableId)}</span>
+                      <span className="text-xs">Seat {seat.seatNumber}</span>
                     </div>
-                  ) : (
-                    <span className="text-stone-300">-</span>
-                  )}
-                </td>
-                <td className="py-4">
-                  <div className="flex flex-col gap-1 text-xs">
-                    {seat.paymentInfo?.icNumber && <span>IC: {seat.paymentInfo.icNumber}</span>}
-                    {seat.paymentInfo?.studentId && <span>ID: {seat.paymentInfo.studentId}</span>}
-                    {seat.paymentInfo?.carPlate && <span className="text-amber-600 font-bold">Car: {seat.paymentInfo.carPlate}</span>}
-                  </div>
-                </td>
-                <td className="py-4 pr-4 text-right">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {seat.status !== SeatStatus.AVAILABLE && (
-                      <button onClick={() => onReset(seat.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100" title="Reset Seat">
-                        <Trash2 className="w-4 h-4" />
+                  </td>
+                  <td className="py-4">
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
+                      seat.status === SeatStatus.SOLD ? 'bg-green-100 text-green-700 border-green-200' : 
+                      seat.status === SeatStatus.CHECKOUT ? 'bg-amber-100 text-amber-700 border-amber-200' : 
+                      'bg-stone-100 text-stone-400 border-stone-200'
+                    }`}>
+                      {seat.status}
+                    </span>
+                  </td>
+                  <td className="py-4">
+                    {info ? (
+                      <div className="flex items-center gap-2">
+                        <User className="w-3 h-3 text-stone-400" />
+                        <span className="font-bold text-stone-800">{info.studentName}</span>
+                      </div>
+                    ) : <span className="text-stone-300">-</span>}
+                  </td>
+                  <td className="py-4">
+                    {info?.category || '-'}
+                  </td>
+                  
+                  {/* --- NEW COLUMN FOR EMAIL AND PHONE --- */}
+                  <td className="py-4">
+                    {info ? (
+                      <div className="flex flex-col gap-1 text-xs">
+                        {info.email && (
+                          <div className="flex items-center gap-1.5 text-stone-500">
+                            <Mail className="w-3 h-3 text-stone-400" /> 
+                            <span className="truncate max-w-[150px]" title={info.email}>{info.email}</span>
+                          </div>
+                        )}
+                        {info.phoneNumber && (
+                          <div className="flex items-center gap-1.5 text-stone-500">
+                            <Phone className="w-3 h-3 text-stone-400" /> 
+                            <span>{info.phoneNumber}</span>
+                          </div>
+                        )}
+                        {!info.email && !info.phoneNumber && <span className="text-stone-300 text-[10px]">No contact info</span>}
+                      </div>
+                    ) : <span className="text-stone-300">-</span>}
+                  </td>
+
+                  <td className="py-4">
+                    <div className="flex flex-col gap-1 text-xs text-stone-500">
+                      {info?.icNumber && <span>IC: {info.icNumber}</span>}
+                      {info?.studentId && <span>ID: {info.studentId}</span>}
+                      {info?.carPlate && <span className="text-amber-600 font-bold">Car: {info.carPlate}</span>}
+                    </div>
+                  </td>
+                  <td className="py-4 pr-4 text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {seat.status !== SeatStatus.AVAILABLE && (
+                        <button onClick={() => onReset(seat.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100" title="Reset Seat">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {seat.status === SeatStatus.CHECKOUT && (
+                        <button onClick={() => onApprove(seat)} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100" title="Approve Payment">
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => onSelectSeat(seat)} className="p-2 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200" title="View Details">
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                    )}
-                    {seat.status === SeatStatus.CHECKOUT && (
-                      <button onClick={() => onApprove(seat)} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100" title="Approve Payment">
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button onClick={() => onSelectSeat(seat)} className="p-2 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200" title="View Details">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
