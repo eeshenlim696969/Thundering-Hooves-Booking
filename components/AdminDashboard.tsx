@@ -5,7 +5,8 @@ import {
   Search, Utensils, Map as MapIcon, List, Flame, Star, Sparkles, 
   TrendingUp, UserCheck, PieChart, Eye, Trash2, 
   FileSpreadsheet, LogOut, MinusCircle, Wand2,
-  CheckCircle2, XCircle, DollarSign, Save, Car, GraduationCap, Briefcase
+  CheckCircle2, XCircle, DollarSign, Save, Car, GraduationCap, Briefcase,
+  Mail, Phone // Added these imports
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -47,12 +48,15 @@ const RoundTable: React.FC<{
   const baseRadius = isMobile ? 60 : 80; 
   const tierColor = tier === SeatTier.PLATINUM ? '#b91c1c' : tier === SeatTier.GOLD ? '#d4af37' : '#57534e';
 
+  // Table 14 -> 13A Logic
+  const displayId = tableId === 4 ? '3A' : tableId === 14 ? '13A' : tableId;
+
   return (
     <div className="relative select-none shrink-0 mx-auto transition-transform hover:scale-105 duration-500" style={{ width: containerSize, height: containerSize }}>
        <div className="absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-4 flex flex-col items-center justify-center bg-white shadow-2xl border-stone-100 z-10">
           <span className="text-[6px] font-black text-stone-400 uppercase tracking-widest leading-none mb-1">TABLE</span>
           <span className="text-xl md:text-3xl font-serif font-black text-stone-900 leading-none">
-            {tableId === 4 ? '3A' : tableId}
+            {displayId}
           </span>
        </div>
        {seats.map((seat) => {
@@ -60,7 +64,7 @@ const RoundTable: React.FC<{
          return (
            <div key={seat.id} className="absolute z-20" style={{ left: center + baseRadius * Math.cos(angle), top: center + baseRadius * Math.sin(angle), transform: 'translate(-50%, -50%)' }}>
              <Seat 
-                data={{...seat, tableId: (seat.tableId === 4 ? '3A' : seat.tableId)} as any}
+                data={{...seat, tableId: displayId} as any}
                 color={tierColor} 
                 isSelected={false} 
                 isLockedByOther={false} 
@@ -125,8 +129,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const parseId = (id: string) => {
     const match = id.match(/t(\d+)-s(\d+)/);
+    const rawTable = match ? match[1] : '-';
+    // Handle 13A logic here too
+    const tableDisplay = rawTable === '4' ? '3A' : rawTable === '14' ? '13A' : rawTable;
+    
     return {
-      table: match ? match[1] : '-',
+      table: tableDisplay,
       seat: match ? match[2] : '-'
     };
   };
@@ -148,15 +156,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (s.status === SeatStatus.AVAILABLE || removedIds.has(s.id)) return false;
       const term = searchTerm.toLowerCase();
       if (!term) return true;
-      const name = s.paymentInfo?.studentName?.toLowerCase() || '';
-      const sid = s.paymentInfo?.studentId?.toLowerCase() || '';
-      const ic = s.paymentInfo?.icNumber?.toLowerCase() || '';
-      const car = s.paymentInfo?.carPlate?.toLowerCase() || '';
-      return name.includes(term) || sid.includes(term) || ic.includes(term) || car.includes(term);
+      const info = s.paymentInfo;
+      
+      const name = info?.studentName?.toLowerCase() || '';
+      const sid = info?.studentId?.toLowerCase() || '';
+      const ic = info?.icNumber?.toLowerCase() || '';
+      const car = info?.carPlate?.toLowerCase() || '';
+      const email = info?.email?.toLowerCase() || ''; // Added Email search
+      
+      return name.includes(term) || sid.includes(term) || ic.includes(term) || car.includes(term) || email.includes(term);
     }).sort((a, b) => {
       const aInfo = parseId(a.id);
       const bInfo = parseId(b.id);
-      if (parseInt(aInfo.table) !== parseInt(bInfo.table)) return parseInt(aInfo.table) - parseInt(bInfo.table);
+      // Simple parse for sort (ignores 13A string logic for sorting order)
+      const tA = parseInt(a.id.match(/t(\d+)/)?.[1] || '0');
+      const tB = parseInt(b.id.match(/t(\d+)/)?.[1] || '0');
+      if (tA !== tB) return tA - tB;
       return parseInt(aInfo.seat) - parseInt(bInfo.seat);
     });
   }, [seats, searchTerm, removedIds]);
@@ -171,8 +186,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   }, [seats]);
 
   const handleExportCSV = () => {
+    // UPDATED HEADERS: Added Email and Phone
     const headers = [
-      "Table", "Seat", "Category", "ID", "Name", "Student ID / IC", "Car Plate", "Member", "Vegan", "Status", "Ref No", "Date", "Time"
+      "Table", "Seat", "Category", "ID", "Name", "Student ID / IC", "Email", "Phone", "Car Plate", "Member", "Vegan", "Status", "Ref No", "Date", "Time"
     ];
     const escapeCSV = (str: any) => `"${String(str || '').replace(/"/g, '""')}"`;
     const csvRows = filteredSeats.map(s => {
@@ -188,7 +204,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         escapeCSV(cat || 'STUDENT'),
         escapeCSV(s.id), 
         escapeCSV(s.paymentInfo?.studentName),
-        escapeCSV(idInfo), 
+        escapeCSV(idInfo),
+        escapeCSV(s.paymentInfo?.email || '-'),       // Added Email
+        escapeCSV(s.paymentInfo?.phoneNumber || '-'), // Added Phone (using phoneNumber key)
         escapeCSV(s.paymentInfo?.carPlate || '-'),
         escapeCSV(s.paymentInfo?.isMember ? 'Yes' : 'No'),
         escapeCSV(s.paymentInfo?.isVegan ? 'Yes' : 'No'), 
@@ -281,8 +299,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                  <div className="grid grid-cols-3 gap-4">
                     {(Object.keys(SeatTier) as Array<keyof typeof SeatTier>).map(key => (
                       <div key={key} className="bg-black/20 p-3 rounded-xl border border-white/5">
-                         <label className="text-[9px] text-white/40 font-black uppercase tracking-widest block mb-2">{key}</label>
-                         <input type="number" step="0.01" value={editPrices[SeatTier[key]]} onChange={(e) => setEditPrices({...editPrices, [SeatTier[key]]: parseFloat(e.target.value) || 0})} className="w-full bg-transparent text-white font-mono font-bold text-lg outline-none border-b border-white/10 focus:border-[#d4af37]" />
+                          <label className="text-[9px] text-white/40 font-black uppercase tracking-widest block mb-2">{key}</label>
+                          <input type="number" step="0.01" value={editPrices[SeatTier[key]]} onChange={(e) => setEditPrices({...editPrices, [SeatTier[key]]: parseFloat(e.target.value) || 0})} className="w-full bg-transparent text-white font-mono font-bold text-lg outline-none border-b border-white/10 focus:border-[#d4af37]" />
                       </div>
                     ))}
                  </div>
@@ -304,11 +322,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p className="text-4xl font-black text-[#d4af37] font-mono">RM {stats.netProfit.toFixed(2)}</p>
                 </div>
                 <div className="mt-4 pt-4 border-t border-white/5">
-                   <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Deduct Expenses (RM)</label>
-                   <div className="relative">
-                      <MinusCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500/50" />
-                      <input type="number" value={deduction} onChange={(e) => setDeduction(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors" placeholder="e.g. 50" />
-                   </div>
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Deduct Expenses (RM)</label>
+                    <div className="relative">
+                       <MinusCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500/50" />
+                       <input type="number" value={deduction} onChange={(e) => setDeduction(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors" placeholder="e.g. 50" />
+                    </div>
                 </div>
               </div>
               <div className="bg-white/5 border border-white/10 p-8 rounded-[32px]">
@@ -363,6 +381,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <th className="px-6 py-4">Guest</th>
                     <th className="px-6 py-4">ID / IC</th>
                     <th className="px-6 py-4">Car Plate</th>
+                    <th className="px-6 py-4">Contact</th> {/* NEW HEADER */}
                     <th className="px-6 py-4">Category</th>
                     <th className="px-6 py-4">Meal</th>
                     <th className="px-6 py-4">Status</th>
@@ -378,10 +397,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                     return (
                       <tr key={s.id} className="text-white/80 group hover:bg-white/[0.02]">
-                        <td className="px-6 py-4 font-mono font-bold text-xs">{table === '4' ? '3A' : table}-{seat}</td>
+                        <td className="px-6 py-4 font-mono font-bold text-xs">{table}-{seat}</td>
                         <td className="px-6 py-4 font-black text-xs uppercase">{s.paymentInfo?.studentName}</td>
                         <td className="px-6 py-4 font-mono text-xs opacity-50">{idText || '-'}</td>
                         <td className="px-6 py-4 font-mono text-xs text-[#d4af37]">{s.paymentInfo?.carPlate || '-'}</td>
+                        
+                        {/* --- NEW CONTACT COLUMN --- */}
+                        <td className="px-6 py-4 text-xs flex flex-col gap-1">
+                           {s.paymentInfo?.email && <div className="flex items-center gap-1.5 opacity-70"><Mail className="w-3 h-3" /><span className="truncate max-w-[120px]">{s.paymentInfo.email}</span></div>}
+                           {s.paymentInfo?.phoneNumber && <div className="flex items-center gap-1.5 opacity-70"><Phone className="w-3 h-3" /><span>{s.paymentInfo.phoneNumber}</span></div>}
+                           {!s.paymentInfo?.email && !s.paymentInfo?.phoneNumber && <span className="opacity-30">-</span>}
+                        </td>
+
                         <td className="px-6 py-4">
                            {cat === 'VITROXIAN' && <span className="flex items-center gap-2 text-[9px] font-black uppercase text-purple-400"><Briefcase className="w-3 h-3" /> Vitroxian</span>}
                            {cat === 'STUDENT' && <span className="flex items-center gap-2 text-[9px] font-black uppercase text-blue-400"><GraduationCap className="w-3 h-3" /> Student</span>}
